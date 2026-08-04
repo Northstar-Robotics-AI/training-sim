@@ -9,6 +9,8 @@
 // Releasing and re-centering the hand is how the operator "ratchets" across a
 // workspace larger than their arm span.
 
+import { mulQuat, negQuat } from '../sim/mjmath.js';
+
 const XR_TO_MJ_QUAT = [Math.SQRT1_2, Math.SQRT1_2, 0, 0]; // wxyz, +90deg about X
 
 /** WebXR (Y-up, -Z forward) position -> MuJoCo (Z-up) position. */
@@ -19,13 +21,9 @@ export function xrPosToMj(p) {
 /** WebXR quaternion (xyzw) -> MuJoCo quaternion (wxyz). */
 export function xrQuatToMj(mj, q) {
   const qXr = [q.w, q.x, q.y, q.z];
-  const t = new Float64Array(4);
-  const out = new Float64Array(4);
-  const inv = new Float64Array(4);
-  mj.mju_negQuat(inv, XR_TO_MJ_QUAT);
-  mj.mju_mulQuat(t, XR_TO_MJ_QUAT, qXr);
-  mj.mju_mulQuat(out, Array.from(t), Array.from(inv));
-  return out;
+  const inv = negQuat(mj, new Float64Array(4), XR_TO_MJ_QUAT);
+  const t = mulQuat(mj, new Float64Array(4), XR_TO_MJ_QUAT, qXr);
+  return mulQuat(mj, new Float64Array(4), t, inv);
 }
 
 export class ClutchRetargeter {
@@ -55,8 +53,7 @@ export class ClutchRetargeter {
     this.engaged = true;
     this.clutchCount++;
     this._anchorHandPos = Float64Array.from(handPosMj);
-    this._anchorHandQuatInv = new Float64Array(4);
-    this.mj.mju_negQuat(this._anchorHandQuatInv, Array.from(handQuatMj));
+    this._anchorHandQuatInv = negQuat(this.mj, new Float64Array(4), handQuatMj);
     this._anchorEePos = Float64Array.from(eePose.pos);
     this._anchorEeQuat = Float64Array.from(eePose.quat);
   }
@@ -77,13 +74,11 @@ export class ClutchRetargeter {
     }
 
     // Relative rotation since engagement, applied to the anchored EE rotation.
-    const dRot = new Float64Array(4);
-    this.mj.mju_mulQuat(dRot, Array.from(handQuatMj), Array.from(this._anchorHandQuatInv));
+    const dRot = mulQuat(this.mj, new Float64Array(4), handQuatMj, this._anchorHandQuatInv);
     if (this.rotScale !== 1.0) slerpFromIdentity(dRot, this.rotScale);
     if (this.lockRoll) zeroRollAboutZ(dRot);
 
-    const quat = new Float64Array(4);
-    this.mj.mju_mulQuat(quat, Array.from(dRot), Array.from(this._anchorEeQuat));
+    const quat = mulQuat(this.mj, new Float64Array(4), dRot, this._anchorEeQuat);
     return { pos, quat };
   }
 }

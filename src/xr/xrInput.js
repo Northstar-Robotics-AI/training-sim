@@ -55,8 +55,15 @@ export class XRInput {
 
       st.trigger = read(BTN.TRIGGER).value;
       st.clutch = read(BTN.GRIP).pressed || read(BTN.GRIP).value > 0.5;
-      st.clutchEdge = st.clutch && !prev.clutch ? 'down'
+
+      // Clutch edges are latched until consumed, not cleared each frame.
+      // Control runs on its own fixed clock and can execute zero times during a
+      // render frame (any time the display is faster than the control rate), so
+      // an edge cleared here is a clutch press the arm never sees -- which
+      // looks exactly like a dead controller.
+      const edge = st.clutch && !prev.clutch ? 'down'
         : (!st.clutch && prev.clutch ? 'up' : null);
+      if (edge) st.clutchEdge = edge;
 
       const prim = read(BTN.PRIMARY).pressed;
       const sec = read(BTN.SECONDARY).pressed;
@@ -79,6 +86,14 @@ export class XRInput {
         this.state.head.valid = true;
       }
     }
+  }
+
+  /** Read and clear a latched clutch transition. @returns {'down'|'up'|null} */
+  consumeClutchEdge(side) {
+    const st = this.state[side];
+    const edge = st.clutchEdge;
+    st.clutchEdge = null;
+    return edge;
   }
 
   /** Short haptic tick. Used for grasp confirmation and level events — the

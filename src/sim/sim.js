@@ -5,6 +5,7 @@
 // Paths inside MEMFS must match `meshdir` in the XML exactly.
 
 import load_mujoco from '@mujoco/mujoco';
+import { mat2Quat } from './mjmath.js';
 
 export class Sim {
   constructor() {
@@ -90,8 +91,7 @@ export class Sim {
 
   sitePose(name) {
     const s = this.data.site(name);
-    const q = new Float64Array(4);
-    this.mj.mju_mat2Quat(q, Array.from(s.xmat));
+    const q = mat2Quat(this.mj, new Float64Array(4), s.xmat);
     return { pos: Float64Array.from(s.xpos), quat: q };
   }
 

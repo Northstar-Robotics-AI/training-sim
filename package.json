@@ -6,6 +6,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
+    "test": "node tools/ik_smoke.mjs",
     "scene": "python tools/build_yam_scene.py --i2rt-models ./vendor/i2rt/i2rt/robot_models --out ./public/assets/yam"
   },
   "dependencies": {

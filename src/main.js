@@ -206,13 +206,14 @@ class App {
 
       if (!s.valid) { ik.step(...currentTarget(sim, side)); continue; }
 
-      if (s.clutchEdge === 'down') {
+      const clutchEdge = this.xr.consumeClutchEdge(side);
+      if (clutchEdge === 'down') {
         ik.syncToCurrent();
         rt.engage(xrPosToMj(s.pos), xrQuatToMj(sim.mj, s.quat), sim.sitePose(`${side}_grasp_site`));
         this.xr.pulse(side, 0.3, 25);
         this.metrics.clutchCount[side]++;
         this.recorder.event('clutch_down', { side });
-      } else if (s.clutchEdge === 'up') {
+      } else if (clutchEdge === 'up') {
         rt.release();
         this.recorder.event('clutch_up', { side });
       }

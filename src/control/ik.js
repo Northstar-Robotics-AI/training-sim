@@ -9,6 +9,8 @@
 // flick there. The damping term trades a little tracking accuracy for a
 // bounded joint velocity, which is what an operator actually wants to feel.
 
+import { jacSite, mat2Quat, subQuat } from '../sim/mjmath.js';
+
 const DOF = 6;
 
 export class ArmIK {
@@ -93,8 +95,7 @@ export class ArmIK {
     const { model, data } = sim;
 
     const site = data.site(this.siteName);
-    const curQuat = new Float64Array(4);
-    mj.mju_mat2Quat(curQuat, Array.from(site.xmat));
+    const curQuat = mat2Quat(mj, new Float64Array(4), site.xmat);
 
     // Positional error, clipped so a big clutch jump doesn't demand an
     // impossible one-tick motion.
@@ -105,8 +106,7 @@ export class ArmIK {
     // mj_jacSite's rotational block is world-frame. Feeding one into the other
     // is a silent, plausible-looking bug: the arm still moves, it just never
     // converges (measured ~60 deg of permanent residual). Rotate into world.
-    const dqLocal = new Float64Array(3);
-    mj.mju_subQuat(dqLocal, Array.from(targetQuat), Array.from(curQuat));
+    const dqLocal = subQuat(mj, new Float64Array(3), targetQuat, curQuat);
     const R = site.xmat;
     const dq = new Float64Array([
       R[0] * dqLocal[0] + R[1] * dqLocal[1] + R[2] * dqLocal[2],
@@ -122,7 +122,7 @@ export class ArmIK {
       for (let i = 0; i < 3; i++) this._err[i] *= this.errCap / posErr;
     }
 
-    mj.mj_jacSite(model, data, this._jacp, this._jacr, this.siteId);
+    jacSite(mj, model, data, this._jacp, this._jacr, this.siteId);
 
     // Slice out this arm's 6 columns from the full nv-wide Jacobian.
     const J = this._J;

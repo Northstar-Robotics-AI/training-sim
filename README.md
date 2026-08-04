@@ -88,11 +88,14 @@ their arm span.
 Per-arm differential IK, damped least squares on the 6×6 site Jacobian, running
 at a fixed 100 Hz independent of render rate.
 
-### Tuning, and three bugs that look fine in a screenshot
+### Tuning, and four bugs that look fine in a screenshot
 
 `tools/ik_bench.py` is a line-for-line Python mirror of `src/control/ik.js`. Use
 it to retune; debugging a controller inside a headset where the only diagnostic
-is "the arm feels wrong" is not a good use of anyone's afternoon.
+is "the arm feels wrong" is not a good use of anyone's afternoon. Being a mirror,
+it shares no code with the browser, so it cannot catch bug 4 below or anything
+else in the binding layer — that is what `npm test` (`tools/ik_smoke.mjs`) is
+for, and it runs the real JS control path against the real model in node.
 
 1. **`mju_subQuat` returns the error in the site's frame; `mj_jacSite`'s
    rotational rows are world-frame.** Mixing them leaves ~60° of permanent
@@ -105,8 +108,15 @@ is "the arm feels wrong" is not a good use of anyone's afternoon.
 3. **At `posGain = 1` the DLS step always exceeds the velocity limit,** so the
    controller never decelerates near the goal and settles into a ~9 mm limit
    cycle. Dropping to 0.35 makes it proportional over the last centimetre.
+4. **The WASM bindings take out-parameters as `DoubleBuffer`, not typed arrays.**
+   Pass a `Float64Array` and the call is accepted, writes nothing, and does not
+   throw — the array comes back untouched. Zeros are a plausible-looking result
+   for every function involved, so this is invisible: an all-zero `mj_jacSite`
+   means the arms simply never move, while the pose telemetry, clutch, and
+   gripper all read correctly. Every out-parameter call goes through
+   `src/sim/mjmath.js` so no call site has to remember this.
 
-A fourth, smaller one: clipping the step per joint changes its *direction*, so
+A smaller one: clipping the step per joint changes its *direction*, so
 the gripper leaves the straight line the operator is drawing. Scale the vector
 instead.
 
