@@ -1,0 +1,18 @@
+{
+  "name": "yam-xr-gym",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "scene": "python tools/build_yam_scene.py --i2rt-models ./vendor/i2rt/i2rt/robot_models --out ./public/assets/yam"
+  },
+  "dependencies": {
+    "@mujoco/mujoco": "^3.11.0",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}
