@@ -14,9 +14,18 @@ import argparse, os, re, shutil, time
 import numpy as np
 import mujoco
 
-# --- joint servo gains (position actuators). Tune against your real YAM. ------
-KP = [220.0, 400.0, 250.0, 80.0, 50.0, 25.0]
-KD = [25.0, 45.0, 28.0, 9.0, 6.0, 3.0]
+# --- joint servo gains (position actuators). Official i2rt values --
+# vendor/i2rt/i2rt/robots/config/yam.yml -- not hand-tuned. They're soft
+# because the real controller doesn't rely on PD stiffness to hold gravity
+# load; it cancels gravity separately (see GRAVITY_COMP_FACTOR) and only uses
+# PD to correct the residual.
+KP = [80.0, 80.0, 80.0, 10.0, 10.0, 10.0]
+KD = [5.0, 5.0, 5.0, 1.5, 1.5, 1.5]
+# Per-joint scale on the gravity-compensation feedforward torque, applied at
+# runtime (src/control/ik.js) as qfrc_bias * GRAVITY_COMP_FACTOR. Also from
+# yam.yml; kept here so the actuator gains and the comp factor they depend on
+# stay next to each other.
+GRAVITY_COMP_FACTOR = [1.0, 1.1, 1.1, 1.2, 1.0, 1.0]
 GRIP_KP, GRIP_KD = 800.0, 20.0
 
 # Capsule collision proxies replacing the STL hulls, per link.
@@ -70,6 +79,15 @@ def add_actuators(spec, sides):
         g.gaintype, g.biastype = mujoco.mjtGain.mjGAIN_FIXED, mujoco.mjtBias.mjBIAS_AFFINE
         g.gainprm[0], g.biasprm[1], g.biasprm[2] = GRIP_KP, -GRIP_KP, -GRIP_KD
         g.ctrlrange, g.ctrllimited = [0.0, 0.0475], True
+        # Gravity-comp feedforward: plain torque actuators, one per arm joint,
+        # summed with the PD actuator above at each joint. Driven at runtime
+        # from qfrc_bias * GRAVITY_COMP_FACTOR (src/control/ik.js), not from a
+        # fixed ctrl value here.
+        for i in range(6):
+            c = spec.add_actuator(name=f"{side}_gcomp{i+1}")
+            c.target, c.trntype = f"{side}_joint{i+1}", mujoco.mjtTrn.mjTRN_JOINT
+            c.gaintype, c.biastype = mujoco.mjtGain.mjGAIN_FIXED, mujoco.mjtBias.mjBIAS_NONE
+            c.gainprm[0] = 1.0
 
 
 def sanitize_xml(xml):

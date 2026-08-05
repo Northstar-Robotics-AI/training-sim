@@ -63,6 +63,15 @@ export class ArmIK {
     for (let i = 1; i <= DOF; i++) this.actIds.push(sim.id('actuator', `${prefix}act${i}`));
     this.gripperAct = sim.id('actuator', `${prefix}gripper`);
 
+    // Gravity-compensation feedforward actuators, summed with the position
+    // actuator at each joint. gravityCompFactor is i2rt's own per-joint scale
+    // on the inverse-dynamics gravity term (vendor/i2rt/i2rt/robots/config/yam.yml);
+    // it exists there because the raw RNE torque runs slightly hot or cold per
+    // joint against the real motors, so this is not something to re-derive.
+    this.gcompActIds = [];
+    for (let i = 1; i <= DOF; i++) this.gcompActIds.push(sim.id('actuator', `${prefix}gcomp${i}`));
+    this.gravityCompFactor = [1.0, 1.1, 1.1, 1.2, 1.0, 1.0];
+
     this.homeQ = homeQ ?? new Array(DOF).fill(0);
     this.qTarget = Float64Array.from(this.homeQ);
     this.qGoal = Float64Array.from(this.homeQ);
@@ -129,12 +138,21 @@ export class ArmIK {
     // --- integral droop correction ---------------------------------------
     // The converged solve is pure feedforward: it finds q with FK(q) = target
     // and commands it, but the position actuators are finite-stiffness
-    // (kp 25-400) so the arm settles a constant gravity droop short -- 17-25 mm
-    // measured, against 0.2 mm for the incremental controller, whose whole
-    // action was integral. Driving this off (goal - measured) rather than
+    // (kp 10-80, i2rt's official values -- soft, because most of the gravity
+    // load is cancelled separately by the gcomp actuators below) so the arm
+    // still settles a small residual droop short. This term mops up whatever
+    // the feedforward gravity comp doesn't get exactly right (model error,
+    // Coulomb friction, payload). Driving this off (goal - measured) rather than
     // (command - measured) is what makes it converge: the latter stays equal to
     // the droop no matter how large the correction gets, and winds up forever.
-    this.iGain = 0.08;
+    //
+    // Re-measured after switching to i2rt's official (softer) kp/kd: the old
+    // 0.08 was tuned against the stiff hand-picked gains and now overdrives
+    // the softer, laggier plant into a limit cycle that never settles (dEnd
+    // oscillating 3-45 mm instead of converging). 0.08 was the ceiling before
+    // it visibly degrades; 0.03 is comfortably inside it -- converges to
+    // <1 mm residual with no oscillation in the same test.
+    this.iGain = 0.03;
     this.iMax = 0.15;
 
     // Anti-windup leash against the measured position. The target is commanded
@@ -402,6 +420,17 @@ export class ArmIK {
     }
 
     for (let c = 0; c < DOF; c++) data.ctrl[this.actIds[c]] = this.qTarget[c];
+
+    // Gravity-comp feedforward. qfrc_bias is MuJoCo's own Coriolis+gravity
+    // generalised force, computed each mj_step -- so this reads last tick's
+    // value, a one-tick zero-order hold at 100+ Hz. Mirrors i2rt's
+    // motor_torques = pd_torque + g * gravity_comp_factor (motor_chain_robot.py),
+    // where g there is compute_inverse_dynamics(q, 0, 0); using qfrc_bias
+    // instead of a separate zero-velocity RNE call picks up the (usually
+    // negligible, at teleop speeds) Coriolis term too.
+    for (let c = 0; c < DOF; c++) {
+      data.ctrl[this.gcompActIds[c]] = data.qfrc_bias[this.dofAdr[c]] * this.gravityCompFactor[c];
+    }
 
     // Report the error the operator actually sees -- at the measured pose, not
     // the solver's.

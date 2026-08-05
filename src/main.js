@@ -16,8 +16,26 @@ const MESHES = ['base', 'link1', 'link2', 'link3', 'link4', 'link5',
   'gripper', 'tip_left', 'tip_right'].map((m) => `/assets/yam/meshes/${m}.stl`);
 const BASE_XML_URL = '/assets/yam/bimanual_yam.xml';
 
-// Home posture: elbow up, wrist level. Doubles as the IK nullspace bias.
+// Nullspace posture bias: elbow up, wrist level. A mid-range working posture,
+// deliberately *not* the rest pose below -- biasing the solver toward a folded
+// stow pose would pull the arm back toward its own joint stops.
 const HOME_Q = [0, 0.9, 1.2, 0, -0.5, 0];
+
+// Rest posture, per side: arms folded back over their own shoulders with the
+// gripper level and pointing straight down +x, so an episode starts clear of
+// the table with both tools presented the same way.
+//
+// joint1 is the shoulder yaw about world +z, and the two bases toe in by
+// 0.3 rad each (see the base quats in bimanual_yam.xml), so the ±0.3 cancels
+// the toe-in -- with joint1 at 0 the two grippers would splay 34 deg apart.
+// The remaining joints are the fold: joint2/joint3 swing the upper arm back
+// and the forearm forward again over the shoulder, and joint4 levels the
+// wrist. Every one keeps >0.4 rad of clearance from its stop, so the first IK
+// solve of an episode is not starting against a limit.
+const REST_Q = {
+  left: [0.3, 0.4, 0.55, -0.15, 0, 0],
+  right: [-0.3, 0.4, 0.55, -0.15, 0, 0],
+};
 
 // Control runs on its own fixed clock. 100 Hz is well above what an operator
 // can perceive and well below what the WASM build struggles with.
@@ -134,12 +152,13 @@ class App {
     sim.reset();
     for (const side of ['left', 'right']) {
       const ik = this.arms[side];
-      for (let i = 0; i < 6; i++) sim.data.qpos[ik.qposAdr[i]] = HOME_Q[i];
+      const rest = REST_Q[side];
+      for (let i = 0; i < 6; i++) sim.data.qpos[ik.qposAdr[i]] = rest[i];
       // Resets the solver goal and the integral term too, not just the
       // command -- leaving either behind carries the previous episode's
       // droop correction into the new one.
       ik.syncToCurrent();
-      for (let i = 0; i < 6; i++) sim.data.ctrl[ik.actIds[i]] = HOME_Q[i];
+      for (let i = 0; i < 6; i++) sim.data.ctrl[ik.actIds[i]] = rest[i];
       ik.setGripper(1);
       this.retarget[side].release();
     }

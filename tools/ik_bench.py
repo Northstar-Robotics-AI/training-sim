@@ -74,8 +74,9 @@ NEW_GAINS = dict(
     max_jump=0.7,        # reject a converged q this far from the previous goal ...
     jump_near_pos=0.05,  # ... but only when already this close in position ...
     jump_near_rot=0.35,  # ... and this close in orientation.
-    # integral droop correction
-    i_gain=0.08,
+    # integral droop correction -- re-measured for the official i2rt kp/kd
+    # plus gravity comp, see the note in ConvergedIK.step.
+    i_gain=0.03,
     i_max=0.15,
     i_gate=1.0,          # integrate only within this multiple of one tick's move
 )
@@ -112,6 +113,13 @@ class ArmBase:
         self.lo, self.hi = model.jnt_range[jid, 0], model.jnt_range[jid, 1]
         self.act = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f'{prefix}act{i}')
                     for i in range(1, 7)]
+        # Gravity-comp feedforward actuators, summed with the position actuator
+        # at each joint -- mirrors src/control/ik.js. Without this the official
+        # (soft) i2rt kp/kd below let the arm droop noticeably under its own
+        # weight; see the i_gain re-measurement note in ConvergedIK.step.
+        self.gcomp_act = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f'{prefix}gcomp{i}')
+                          for i in range(1, 7)]
+        self.grav_factor = np.array([1.0, 1.1, 1.1, 1.2, 1.0, 1.0])
         self.sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, site)
         self.home = np.array(HOME, float)
         self.qt = self.home.copy()
@@ -131,6 +139,8 @@ class ArmBase:
     def emit(self):
         for i, a in enumerate(self.act):
             self.d.ctrl[a] = self.qt[i]
+        for i, a in enumerate(self.gcomp_act):
+            self.d.ctrl[a] = self.d.qfrc_bias[self.dof[i]] * self.grav_factor[i]
 
 
 class IncrementalIK(ArmBase):
@@ -289,12 +299,18 @@ class ConvergedIK(ArmBase):
 
         # Integral droop correction. The converged solve is pure feedforward:
         # it finds q with FK(q) = target and commands it, but the position
-        # actuators are finite-stiffness (kp 25-400) so the arm settles a
-        # constant gravity droop short -- measured 17-25 mm, against 0.2 mm for
-        # the incremental controller, whose whole action was integral. Driving
-        # this off (q_goal - measured) rather than (command - measured) is what
-        # makes it converge: the latter stays equal to the droop no matter how
-        # large the correction gets, and winds up forever.
+        # actuators are finite-stiffness (kp 10-80, i2rt's official values) so
+        # the arm still settles a small residual droop short even with gravity
+        # comp cancelling most of the static load. Driving this off
+        # (q_goal - measured) rather than (command - measured) is what makes it
+        # converge: the latter stays equal to the droop no matter how large the
+        # correction gets, and winds up forever.
+        #
+        # i_gain was re-measured after switching from hand-tuned to official
+        # kp/kd (2.5-4x softer) plus adding gravity comp: 0.08 now overdrives
+        # the softer plant into a limit cycle that never settles (--sweep shows
+        # worst-case tracking getting *worse* from 0.02 to 0.08). 0.03 is
+        # comfortably inside the stable range.
         #
         # Integrate only once the command has caught up to the goal. Mid-slew
         # the arm is legitimately far behind, and integrating that gap saturates
