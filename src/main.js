@@ -109,9 +109,13 @@ class App {
       left: new ArmIK(this.sim, { prefix: 'left_', siteName: 'left_grasp_site', homeQ: HOME_Q }),
       right: new ArmIK(this.sim, { prefix: 'right_', siteName: 'right_grasp_site', homeQ: HOME_Q }),
     };
+    // posReach is generous because posScale already shrinks hand travel: at
+    // 0.6, half a metre of arm travel is 0.83 m of hand travel, which is past
+    // where an operator would re-clutch anyway.
+    const retargetCfg = { posScale: 0.6, posReach: 0.5, rotReach: 1.2 };
     this.retarget = {
-      left: new ClutchRetargeter(this.sim.mj, { posScale: 0.6 }),
-      right: new ClutchRetargeter(this.sim.mj, { posScale: 0.6 }),
+      left: new ClutchRetargeter(this.sim.mj, retargetCfg),
+      right: new ClutchRetargeter(this.sim.mj, retargetCfg),
     };
 
     if (!this.hud) this.hud = new HUD(this.scene);
@@ -125,7 +129,10 @@ class App {
     for (const side of ['left', 'right']) {
       const ik = this.arms[side];
       for (let i = 0; i < 6; i++) sim.data.qpos[ik.qposAdr[i]] = HOME_Q[i];
-      ik.qTarget = Float64Array.from(HOME_Q);
+      // Resets the solver goal and the integral term too, not just the
+      // command -- leaving either behind carries the previous episode's
+      // droop correction into the new one.
+      ik.syncToCurrent();
       for (let i = 0; i < 6; i++) sim.data.ctrl[ik.actIds[i]] = HOME_Q[i];
       ik.setGripper(1);
       this.retarget[side].release();
@@ -150,6 +157,7 @@ class App {
 
     this.metrics.reset();
     this._prevEE = null;
+    this._ikRej = { left: 0, right: 0 };
     this.status = 'running';
     this.tRemaining = this.level.timeLimit;
     this.recorder.start({ levelId: this.level.id, seed: this.seed - 1 });
@@ -223,6 +231,7 @@ class App {
         const r = ik.step(target.pos, target.quat);
         this._ikDbg = this._ikDbg || {};
         this._ikDbg[side] = { ...r, tgt: target.pos };
+        if (r.rejected) this._ikRej[side]++;
         // Buzz only when the leash engages -- the arm is genuinely blocked by
         // contact or a joint limit. `damped` fires during any normal fast slew,
         // so buzzing on that would vibrate continuously and mean nothing.
@@ -264,7 +273,13 @@ class App {
       const s = this.xr.state[side];
       const rt = this.retarget[side];
       const d = this._ikDbg && this._ikDbg[side];
-      const ikStr = d ? `err=${d.posErr.toFixed(4)} leash=${d.leashed ? 1 : 0}` : 'no-ik';
+      // it= is the inner solve's iteration count. Steady 1-2 is healthy; if it
+      // sits at the 8 budget the target is unreachable, not the solver slow.
+      // rej= counts branch-switch rejections, which should be rare.
+      const ikStr = d
+        ? `err=${d.posErr.toFixed(4)} leash=${d.leashed ? 1 : 0}`
+          + ` it=${d.iters}${d.converged ? '' : '!'} rej=${this._ikRej[side]}`
+        : 'no-ik';
       return `${side[0].toUpperCase()} c=${s.clutch ? 1 : 0} eng=${rt.engaged ? 1 : 0}`
         + ` cnt=${rt.clutchCount} ${ikStr}`;
     };
