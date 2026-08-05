@@ -154,9 +154,13 @@
     <!-- kp/kd match i2rt's official yam.yml motor gains (vendor/i2rt/i2rt/robots/config/yam.yml).
          They are soft relative to the old hand-tuned values because the real
          controller doesn't lean on stiffness to hold gravity load -- it cancels
-         gravity separately via the gcomp actuators below and only uses PD to
-         correct the residual. Same reason the *_gcomp actuators exist: without
-         them these gains sag under the arm's own weight. -->
+         gravity separately and only uses PD to correct the residual.
+         That cancellation is applied at runtime through data.qfrc_applied
+         (src/control/ik.js), deliberately NOT through an actuator: these joints
+         carry actuatorfrcrange="-10 10", and the arm's own weight at full
+         extension needs 15.3 Nm at joint2, so a feedforward routed through an
+         actuator gets clipped and the arm falls. On qfrc_applied the range
+         limits only the servo, which is what it is for. -->
     <general name="left_act1" joint="left_joint1" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="80" biasprm="0 -80 -5"/>
     <general name="left_act2" joint="left_joint2" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="80" biasprm="0 -80 -5"/>
     <general name="left_act3" joint="left_joint3" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="80" biasprm="0 -80 -5"/>
@@ -164,16 +168,6 @@
     <general name="left_act5" joint="left_joint5" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="10" biasprm="0 -10 -1.5"/>
     <general name="left_act6" joint="left_joint6" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="10" biasprm="0 -10 -1.5"/>
     <general name="left_gripper" joint="left_joint7" ctrllimited="true" ctrlrange="0 0.0475" biastype="affine" gainprm="800" biasprm="0 -800 -20"/>
-    <!-- Gravity-compensation feedforward, one torque actuator per arm joint,
-         summed with the PD actuator above at the joint (clamped together by
-         actuatorfrcrange). Driven each control tick from qfrc_bias * gravity_comp_factor,
-         mirroring i2rt's motor_chain_robot.py: motor_torques = pd_torque + g * gravity_comp_factor. -->
-    <motor name="left_gcomp1" joint="left_joint1"/>
-    <motor name="left_gcomp2" joint="left_joint2"/>
-    <motor name="left_gcomp3" joint="left_joint3"/>
-    <motor name="left_gcomp4" joint="left_joint4"/>
-    <motor name="left_gcomp5" joint="left_joint5"/>
-    <motor name="left_gcomp6" joint="left_joint6"/>
     <general name="right_act1" joint="right_joint1" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="80" biasprm="0 -80 -5"/>
     <general name="right_act2" joint="right_joint2" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="80" biasprm="0 -80 -5"/>
     <general name="right_act3" joint="right_joint3" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="80" biasprm="0 -80 -5"/>
@@ -181,11 +175,5 @@
     <general name="right_act5" joint="right_joint5" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="10" biasprm="0 -10 -1.5"/>
     <general name="right_act6" joint="right_joint6" ctrllimited="true" ctrlrange="-3.2 3.2" biastype="affine" gainprm="10" biasprm="0 -10 -1.5"/>
     <general name="right_gripper" joint="right_joint7" ctrllimited="true" ctrlrange="0 0.0475" biastype="affine" gainprm="800" biasprm="0 -800 -20"/>
-    <motor name="right_gcomp1" joint="right_joint1"/>
-    <motor name="right_gcomp2" joint="right_joint2"/>
-    <motor name="right_gcomp3" joint="right_joint3"/>
-    <motor name="right_gcomp4" joint="right_joint4"/>
-    <motor name="right_gcomp5" joint="right_joint5"/>
-    <motor name="right_gcomp6" joint="right_joint6"/>
   </actuator>
 </mujoco>

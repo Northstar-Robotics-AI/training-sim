@@ -63,10 +63,26 @@ export class ArmIK {
     for (let i = 1; i <= DOF; i++) this.actIds.push(sim.id('actuator', `${prefix}act${i}`));
     this.gripperAct = sim.id('actuator', `${prefix}gripper`);
 
-    // Gravity-compensation feedforward actuators, summed with the position
-    // actuator at each joint.
+    // Gravity-compensation feedforward. Applied through data.qfrc_applied, not
+    // through an actuator, and that distinction is the whole ballgame:
+    // actuatorfrcrange is a limit on *actuator* force, so routing the
+    // feedforward through a motor actuator puts gravity comp and the position
+    // servo into one shared torque budget. The arm's own weight at full
+    // extension needs 15.3 Nm at joint2 against a +/-10 Nm range, so the
+    // feedforward alone was clipped 5 Nm short of holding the arm up and the
+    // servo got nothing -- measured, the gripper fell 67 mm at 774 mm reach
+    // (0 mm here). qfrc_applied is outside that budget, which leaves
+    // actuatorfrcrange meaning what it should: a limit on the servo.
     //
-    // Unity, not i2rt's [1.0, 1.1, 1.1, 1.2, 1.0, 1.0]. Those live in
+    // This is also what i2rt's own MuJoCo sim does -- sim_robot.py writes
+    // `self._data.qfrc_applied[:nq_arm] = grav[:nq_arm]` -- and it mirrors the
+    // hardware, where gcomp is summed into the motor torque inside the 1 kHz
+    // loop and `clip_motor_torque` defaults to inf (motor_chain_robot.py).
+    //
+    // Note qfrc_applied persists across mj_step, exactly like ctrl: every tick
+    // must write all six entries or the previous tick's torque keeps acting.
+    //
+    // The factor is unity, not i2rt's [1.0, 1.1, 1.1, 1.2, 1.0, 1.0]. Those live in
     // vendor/i2rt/i2rt/robots/config/yam.yml as a *hardware* calibration: the
     // commanded torque and the delivered torque differ per joint on the real
     // arm (gearbox, torque constant), so the factor trims the gap. i2rt's own
@@ -79,8 +95,6 @@ export class ArmIK {
     // values (get_robot.py, `sim_grav_comp`). Measured on a 5 s declutched
     // hold, contact-free poses: the yaml factors drift the gripper 5-13 mm,
     // unity drifts 0.0 mm.
-    this.gcompActIds = [];
-    for (let i = 1; i <= DOF; i++) this.gcompActIds.push(sim.id('actuator', `${prefix}gcomp${i}`));
     this.gravityCompFactor = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
     this.homeQ = homeQ ?? new Array(DOF).fill(0);
@@ -150,7 +164,7 @@ export class ArmIK {
     // The converged solve is pure feedforward: it finds q with FK(q) = target
     // and commands it, but the position actuators are finite-stiffness
     // (kp 10-80, i2rt's official values -- soft, because most of the gravity
-    // load is cancelled separately by the gcomp actuators below) so the arm
+    // load is cancelled separately by _applyGravityComp) so the arm
     // still settles a small residual droop short. This term mops up whatever
     // the feedforward gravity comp doesn't get exactly right (model error,
     // Coulomb friction, payload). Driving this off (goal - measured) rather than
@@ -432,16 +446,7 @@ export class ArmIK {
 
     for (let c = 0; c < DOF; c++) data.ctrl[this.actIds[c]] = this.qTarget[c];
 
-    // Gravity-comp feedforward. qfrc_bias is MuJoCo's own Coriolis+gravity
-    // generalised force, computed each mj_step -- so this reads last tick's
-    // value, a one-tick zero-order hold at 100+ Hz. Mirrors i2rt's
-    // motor_torques = pd_torque + g * gravity_comp_factor (motor_chain_robot.py),
-    // where g there is compute_inverse_dynamics(q, 0, 0); using qfrc_bias
-    // instead of a separate zero-velocity RNE call picks up the (usually
-    // negligible, at teleop speeds) Coriolis term too.
-    for (let c = 0; c < DOF; c++) {
-      data.ctrl[this.gcompActIds[c]] = data.qfrc_bias[this.dofAdr[c]] * this.gravityCompFactor[c];
-    }
+    this._applyGravityComp();
 
     // Report the error the operator actually sees -- at the measured pose, not
     // the solver's.
@@ -470,9 +475,23 @@ export class ArmIK {
    * ever reads qfrc_bias, never qpos, so it cannot walk the target anywhere.
    */
   holdGravity() {
+    this._applyGravityComp();
+  }
+
+  /**
+   * Write the gravity feedforward into this arm's six generalised-force slots.
+   *
+   * qfrc_bias is MuJoCo's own Coriolis+gravity generalised force, recomputed
+   * each mj_step, so this reads last tick's value -- a one-tick zero-order hold
+   * at 100+ Hz, measured indistinguishable from refreshing every 2 ms substep.
+   * i2rt's equivalent is compute_inverse_dynamics(q, 0, 0), i.e. pure g(q);
+   * qfrc_bias additionally carries the Coriolis term, which measures as no
+   * difference at teleop speeds and is the physically correct thing to cancel.
+   */
+  _applyGravityComp() {
     const { data } = this.sim;
     for (let c = 0; c < DOF; c++) {
-      data.ctrl[this.gcompActIds[c]] = data.qfrc_bias[this.dofAdr[c]] * this.gravityCompFactor[c];
+      data.qfrc_applied[this.dofAdr[c]] = data.qfrc_bias[this.dofAdr[c]] * this.gravityCompFactor[c];
     }
   }
 

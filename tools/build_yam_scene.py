@@ -17,8 +17,8 @@ import mujoco
 # --- joint servo gains (position actuators). Official i2rt values --
 # vendor/i2rt/i2rt/robots/config/yam.yml -- not hand-tuned. They're soft
 # because the real controller doesn't rely on PD stiffness to hold gravity
-# load; it cancels gravity separately (see GRAVITY_COMP_FACTOR) and only uses
-# PD to correct the residual.
+# load; it cancels gravity separately (see GRAVITY_COMP_FACTOR, applied at
+# runtime via qfrc_applied) and only uses PD to correct the residual.
 KP = [80.0, 80.0, 80.0, 10.0, 10.0, 10.0]
 KD = [5.0, 5.0, 5.0, 1.5, 1.5, 1.5]
 # Per-joint scale on the gravity-compensation feedforward torque, applied at
@@ -83,15 +83,14 @@ def add_actuators(spec, sides):
         g.gaintype, g.biastype = mujoco.mjtGain.mjGAIN_FIXED, mujoco.mjtBias.mjBIAS_AFFINE
         g.gainprm[0], g.biasprm[1], g.biasprm[2] = GRIP_KP, -GRIP_KP, -GRIP_KD
         g.ctrlrange, g.ctrllimited = [0.0, 0.0475], True
-        # Gravity-comp feedforward: plain torque actuators, one per arm joint,
-        # summed with the PD actuator above at each joint. Driven at runtime
-        # from qfrc_bias * GRAVITY_COMP_FACTOR (src/control/ik.js), not from a
-        # fixed ctrl value here.
-        for i in range(6):
-            c = spec.add_actuator(name=f"{side}_gcomp{i+1}")
-            c.target, c.trntype = f"{side}_joint{i+1}", mujoco.mjtTrn.mjTRN_JOINT
-            c.gaintype, c.biastype = mujoco.mjtGain.mjGAIN_FIXED, mujoco.mjtBias.mjBIAS_NONE
-            c.gainprm[0] = 1.0
+        # No gravity-comp actuators on purpose. The feedforward is applied at
+        # runtime through data.qfrc_applied (src/control/ik.js). Routing it
+        # through a torque actuator instead puts it inside the joint's
+        # actuatorfrcrange (+/-10 Nm, inherited from the i2rt arm model), where
+        # it shares one budget with the PD servo -- and the arm's own weight at
+        # full extension already needs 15.3 Nm at joint2, so the feedforward got
+        # clipped short of holding the arm up. qfrc_applied is outside that
+        # budget, matching i2rt's own sim (sim_robot.py).
 
 
 def sanitize_xml(xml):
