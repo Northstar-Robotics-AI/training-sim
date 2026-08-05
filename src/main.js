@@ -124,6 +124,12 @@ class App {
   }
 
   resetEpisode() {
+    // Cancel any pending end-of-episode advance. Without this, resetting
+    // manually during the 1.8 s results pause lets that timer fire on top of
+    // the fresh episode -- resetting it a second time, or skipping a level.
+    clearTimeout(this._endTimer);
+    this._endTimer = null;
+
     const sim = this.sim;
     sim.reset();
     for (const side of ['left', 'right']) {
@@ -249,6 +255,18 @@ class App {
 
     this.xr.update(xrFrame, this.renderer.xr.getReferenceSpace());
 
+    // Y (left secondary) resets the episode, mirroring the 'r' key -- the only
+    // way out of a wedged attempt without taking the headset off.
+    //
+    // Consumed here at render rate rather than in control(): that is where the
+    // edge is produced, and the fixed-step control loop below can run zero
+    // times in a frame whenever the display is faster than the control rate,
+    // which would silently drop presses.
+    if (this.xr.state.left.secondaryEdge) {
+      this.xr.pulse('left', 0.4, 40);
+      this.resetEpisode();
+    }
+
     // Fixed-rate control, independent of render rate.
     this._ctlAcc += dt;
     const step = 1 / CONTROL_HZ;
@@ -358,7 +376,8 @@ class App {
     const unlocked = passes >= this.level.gate.needed
       && this.results.length >= this.level.gate.window;
 
-    setTimeout(() => {
+    this._endTimer = setTimeout(() => {
+      this._endTimer = null;
       if (unlocked && this.levelIndex < CURRICULUM.length - 1) {
         this.loadLevel(this.levelIndex + 1);
       } else {

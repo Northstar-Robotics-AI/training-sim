@@ -3,8 +3,12 @@
 // Button mapping (Quest Touch / standard xr-standard gamepad):
 //   grip (button 1)     clutch  -- hold to move the arm
 //   trigger (button 0)  gripper -- analog, so the operator can feel a soft close
-//   A / X (button 4)    reset level
-//   B / Y (button 5)    cycle camera / toggle collision proxy view
+//   Y (button 5, left)  reset episode, same as the 'r' key
+//   A / X (button 4)    read as primaryEdge, currently unbound
+//   B (button 5, right) read as secondaryEdge, currently unbound
+//
+// Edges here are recomputed every update() rather than latched, so they must be
+// consumed at render rate. The clutch is the exception and says why.
 //
 // Poses are read in the *local-floor* reference space so the table sits at a
 // believable height relative to the operator's real floor.
