@@ -22,10 +22,14 @@ import mujoco
 KP = [80.0, 80.0, 80.0, 10.0, 10.0, 10.0]
 KD = [5.0, 5.0, 5.0, 1.5, 1.5, 1.5]
 # Per-joint scale on the gravity-compensation feedforward torque, applied at
-# runtime (src/control/ik.js) as qfrc_bias * GRAVITY_COMP_FACTOR. Also from
-# yam.yml; kept here so the actuator gains and the comp factor they depend on
-# stay next to each other.
-GRAVITY_COMP_FACTOR = [1.0, 1.1, 1.1, 1.2, 1.0, 1.0]
+# runtime (src/control/ik.js) as qfrc_bias * GRAVITY_COMP_FACTOR. Kept here so
+# the actuator gains and the comp factor they depend on stay next to each other.
+#
+# Unity, unlike yam.yml's [1.0, 1.1, 1.1, 1.2, 1.0, 1.0]. That is a hardware
+# trim for the real motors; in sim the gravity model is the plant, so exact
+# compensation is 1.0. i2rt's own sim path does the same (get_robot.py passes
+# np.ones() rather than the yaml values). See the note in src/control/ik.js.
+GRAVITY_COMP_FACTOR = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 GRIP_KP, GRIP_KD = 800.0, 20.0
 
 # Capsule collision proxies replacing the STL hulls, per link.

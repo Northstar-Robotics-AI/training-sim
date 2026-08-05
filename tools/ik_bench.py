@@ -119,7 +119,10 @@ class ArmBase:
         # weight; see the i_gain re-measurement note in ConvergedIK.step.
         self.gcomp_act = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f'{prefix}gcomp{i}')
                           for i in range(1, 7)]
-        self.grav_factor = np.array([1.0, 1.1, 1.1, 1.2, 1.0, 1.0])
+        # Unity, not yam.yml's [1.0, 1.1, 1.1, 1.2, 1.0, 1.0] -- that is a
+        # hardware trim for the real motors, and here the gravity model is the
+        # plant. See the note in src/control/ik.js.
+        self.grav_factor = np.ones(6)
         self.sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, site)
         self.home = np.array(HOME, float)
         self.qt = self.home.copy()

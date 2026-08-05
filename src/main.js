@@ -237,7 +237,10 @@ class App {
       const ik = arms[side];
       const rt = retarget[side];
 
-      if (!s.valid) { ik.step(...currentTarget(sim, side)); continue; }
+      // No controller data: hold still. Gravity comp still needs to run --
+      // see the holdGravity() call below the clutch handling for why this
+      // can't just be ik.step() with the site's own current pose as target.
+      if (!s.valid) { ik.holdGravity(); continue; }
 
       const clutchEdge = this.xr.consumeClutchEdge(side);
       if (clutchEdge === 'down') {
@@ -261,6 +264,13 @@ class App {
         // contact or a joint limit. `damped` fires during any normal fast slew,
         // so buzzing on that would vibrate continuously and mean nothing.
         if (r.leashed) this.xr.pulse(side, 0.15, 15);
+      } else {
+        // Declutched: hold the last commanded qTarget (still being applied to
+        // the position actuators every tick regardless) but keep the gravity
+        // feedforward fresh. Must not be ik.step() here -- see holdGravity()'s
+        // docstring for the 227 mm drift that produces over a sustained idle
+        // period, which is exactly what "declutched" is.
+        ik.holdGravity();
       }
       ik.setGripper(1 - s.trigger);
     }
@@ -404,11 +414,6 @@ class App {
       }
     }, 1800);
   }
-}
-
-function currentTarget(sim, side) {
-  const p = sim.sitePose(`${side}_grasp_site`);
-  return [p.pos, p.quat];
 }
 
 new App().boot().catch((e) => {

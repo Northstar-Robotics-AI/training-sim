@@ -64,13 +64,24 @@ export class ArmIK {
     this.gripperAct = sim.id('actuator', `${prefix}gripper`);
 
     // Gravity-compensation feedforward actuators, summed with the position
-    // actuator at each joint. gravityCompFactor is i2rt's own per-joint scale
-    // on the inverse-dynamics gravity term (vendor/i2rt/i2rt/robots/config/yam.yml);
-    // it exists there because the raw RNE torque runs slightly hot or cold per
-    // joint against the real motors, so this is not something to re-derive.
+    // actuator at each joint.
+    //
+    // Unity, not i2rt's [1.0, 1.1, 1.1, 1.2, 1.0, 1.0]. Those live in
+    // vendor/i2rt/i2rt/robots/config/yam.yml as a *hardware* calibration: the
+    // commanded torque and the delivered torque differ per joint on the real
+    // arm (gearbox, torque constant), so the factor trims the gap. i2rt's own
+    // tuning instructions say as much -- "adjust gravity_comp_factor so the arm
+    // holds horizontal poses without sagging or drifting".
+    //
+    // Here the model computing qfrc_bias *is* the plant being simulated, so
+    // exact compensation is 1.0 and any other value is injected error. i2rt
+    // agrees explicitly: their sim path passes np.ones() rather than the yaml
+    // values (get_robot.py, `sim_grav_comp`). Measured on a 5 s declutched
+    // hold, contact-free poses: the yaml factors drift the gripper 5-13 mm,
+    // unity drifts 0.0 mm.
     this.gcompActIds = [];
     for (let i = 1; i <= DOF; i++) this.gcompActIds.push(sim.id('actuator', `${prefix}gcomp${i}`));
-    this.gravityCompFactor = [1.0, 1.1, 1.1, 1.2, 1.0, 1.0];
+    this.gravityCompFactor = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
     this.homeQ = homeQ ?? new Array(DOF).fill(0);
     this.qTarget = Float64Array.from(this.homeQ);
@@ -444,6 +455,25 @@ export class ArmIK {
       iters: sol.iters,
       converged: sol.converged,
     };
+  }
+
+  /**
+   * Refresh only the gravity-comp feedforward, leaving qTarget/qGoal/iTerm
+   * untouched. For ticks where the arm should simply hold still (declutched,
+   * no controller data): calling step() there instead -- with the site's own
+   * *live* pose as target -- was tried and is unsound. That target is read
+   * fresh off data.site() every tick, so it is wherever qpos actually is,
+   * including any transient servo droop; the solver then treats that droop as
+   * the new goal instead of correcting it, and repeats next tick. Measured: a
+   * held rest pose drifted 227 mm over 5 s of idle before settling on the
+   * wrong configuration. There is no such feedback loop here -- this only
+   * ever reads qfrc_bias, never qpos, so it cannot walk the target anywhere.
+   */
+  holdGravity() {
+    const { data } = this.sim;
+    for (let c = 0; c < DOF; c++) {
+      data.ctrl[this.gcompActIds[c]] = data.qfrc_bias[this.dofAdr[c]] * this.gravityCompFactor[c];
+    }
   }
 
   /** @param {number} open 0 = closed, 1 = fully open */
