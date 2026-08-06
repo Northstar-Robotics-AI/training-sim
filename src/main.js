@@ -12,16 +12,62 @@ import { composeSceneXML, makeRng, EpisodeMetrics } from './levels/Level.js';
 import { Recorder, makeSampler } from './record/recorder.js';
 import { HUD } from './ui/hud.js';
 
-const MESHES = ['base', 'link1', 'link2', 'link3', 'link4', 'link5',
-  'gripper', 'tip_left', 'tip_right'].map((m) => `/assets/yam/meshes/${m}.stl`);
 const BASE_XML_URL = '/assets/yam/bimanual_yam.xml';
 
-// Home posture: elbow up, wrist level. Doubles as the IK nullspace bias.
+// The mesh list used to be hand-maintained here, which drifted the moment
+// the generator (tools/build_yam_scene.py) started emitting collision hulls
+// alongside the visual STLs -- the WASM loader would 404 on any <mesh file>
+// this list didn't happen to mention. The XML's own <asset> block is the
+// actual source of truth, so read it from there instead.
+function meshUrlsFromXml(xml) {
+  const urls = [];
+  for (const m of xml.matchAll(/<mesh\b[^>]*\bfile="([^"]+)"/g)) urls.push(`/assets/yam/meshes/${m[1]}`);
+  return urls;
+}
+
+// Nullspace posture bias: elbow up, wrist level. A mid-range working posture,
+// deliberately *not* the rest pose below -- biasing the solver toward a folded
+// stow pose would pull the arm back toward its own joint stops.
 const HOME_Q = [0, 0.9, 1.2, 0, -0.5, 0];
+
+// Rest posture, per side: arms folded back over their own shoulders with the
+// gripper level and pointing straight down +x, so an episode starts clear of
+// the table with both tools presented the same way.
+//
+// joint1 is the shoulder yaw about world +z, and the two bases toe in by
+// 0.3 rad each (see the base quats in bimanual_yam.xml), so the ±0.3 cancels
+// the toe-in -- with joint1 at 0 the two grippers would splay 34 deg apart.
+// The remaining joints are the fold: joint2/joint3 swing the upper arm back
+// and the forearm forward again over the shoulder, and joint4 levels the
+// wrist. Every one keeps >0.4 rad of clearance from its stop, so the first IK
+// solve of an episode is not starting against a limit.
+const REST_Q = {
+  left: [0.3, 0.4, 0.55, -0.15, 0, 0],
+  right: [-0.3, 0.4, 0.55, -0.15, 0, 0],
+};
 
 // Control runs on its own fixed clock. 100 Hz is well above what an operator
 // can perceive and well below what the WASM build struggles with.
 const CONTROL_HZ = 100;
+
+// Where the VR user's play-space origin lands in the scene, in three.js world
+// coordinates (Y-up). The arm bases sit at world x=-0.05, centred on z=0 (see
+// bimanual_yam.xml's left/right_base pos, rotated by sceneBuilder's MJ_TO_XR).
+// Base spot is a stride behind them with both arms and the table in frame --
+// third person, not standing inside the robot -- then nudged 30cm forward and
+// 50cm up from there for a better vantage over the table. y=0 would be the
+// physical floor ('local-floor' puts the reference space origin there and the
+// headset supplies actual eye height on top), so +0.5 raises the origin itself
+// to roughly chest height.
+const XR_SPAWN_POS = new THREE.Vector3(-1.1 + 0.3, 0.5, 0);
+// Faces +X (toward the arms/table) from the default -Z forward, then tilts
+// 20 degrees down to look more at the table than the horizon. The down-tilt
+// is a rotation about world +Z, which is where +X-facing's local right axis
+// lands after the yaw -- so it has to be composed on the left (applied after
+// the yaw), not folded into one axis-angle.
+const XR_SPAWN_YAW = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
+const XR_SPAWN_TILT = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -20 * Math.PI / 180);
+const XR_SPAWN_QUAT = XR_SPAWN_TILT.clone().multiply(XR_SPAWN_YAW);
 
 class App {
   constructor() {
@@ -38,6 +84,7 @@ class App {
 
   async boot() {
     this.baseXml = await fetch(BASE_XML_URL).then((r) => r.text());
+    this.meshUrls = meshUrlsFromXml(this.baseXml);
     this.initRenderer();
     await this.loadLevel(0);
     this.renderer.setAnimationLoop((t, frame) => this.frame(t, frame));
@@ -55,6 +102,16 @@ class App {
     this.camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 40);
     this.camera.position.set(-0.9, 1.5, 0.9);
 
+    // The XR device pose overwrites camera.matrix directly every frame while
+    // presenting, so repositioning the camera itself for VR would also have
+    // to un-happen the moment the session ends. Instead the camera (and the
+    // controllers, so tracked hands stay consistent with where the head
+    // lands) sit under a dolly that's identity on the desktop path and only
+    // gets moved on 'sessionstart' below.
+    this.xrRig = new THREE.Group();
+    this.scene.add(this.xrRig);
+    this.xrRig.add(this.camera);
+
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setSize(innerWidth, innerHeight);
@@ -71,7 +128,26 @@ class App {
     this.orbit.update();
 
     this.xr = new XRInput(this.renderer);
-    for (let i = 0; i < 2; i++) this.scene.add(this.renderer.xr.getController(i));
+    for (let i = 0; i < 2; i++) this.xrRig.add(this.renderer.xr.getController(i));
+
+    // Placed fresh on every 'sessionstart' -- including the first one after a
+    // page reload -- so the operator always steps into VR standing behind the
+    // arms, never wherever their headset happened to be tracking from.
+    this.renderer.xr.addEventListener('sessionstart', () => {
+      this.xrRig.position.copy(XR_SPAWN_POS);
+      this.xrRig.quaternion.copy(XR_SPAWN_QUAT);
+    });
+    // The XR pose leaves camera.matrix in rig-local coordinates from wherever
+    // the headset last was; with the rig back at identity that would render
+    // from a bogus spot on the desktop path until the user next drags to
+    // orbit. Reset both so exiting VR lands back on the desktop framing.
+    this.renderer.xr.addEventListener('sessionend', () => {
+      this.xrRig.position.set(0, 0, 0);
+      this.xrRig.quaternion.identity();
+      this.camera.position.set(-0.9, 1.5, 0.9);
+      this.camera.quaternion.identity();
+      this.orbit.update();
+    });
 
     addEventListener('resize', () => {
       this.camera.aspect = innerWidth / innerHeight;
@@ -89,44 +165,76 @@ class App {
   }
 
   async loadLevel(index) {
-    this.levelIndex = index;
-    this.level = CURRICULUM[index];
-    this.results = [];
+    // `level` stays local until everything it depends on is ready. The render
+    // loop keeps ticking during the awaits below (evaluate() runs every frame
+    // whenever status is still 'running', e.g. a manual skip mid-episode), and
+    // if this.level flipped early it would run the *new* level's tick/success
+    // against the *old*, still-current this.ctx/this.sim -- reading a site
+    // name (like target_site) that only exists in the model being compiled,
+    // not the one still loaded. That throw is uncaught inside
+    // setAnimationLoop's callback, which silently kills the whole render loop
+    // -- exactly what looked like a freeze switching levels.
+    const level = CURRICULUM[index];
 
     // Compiling per level rather than hiding unused props keeps each level's
     // contact set minimal, which is the difference between 90 Hz and 45 Hz
     // once a level has a dozen loose objects in it.
-    const xml = composeSceneXML(this.baseXml, this.level);
+    const xml = composeSceneXML(this.baseXml, level);
     if (this.gfx) this.scene.remove(this.gfx.root);
-    this.sim = await new Sim().init({
+    const sim = await new Sim().init({
       xmlUrl: URL.createObjectURL(new Blob([xml], { type: 'text/xml' })),
-      meshUrls: MESHES,
+      meshUrls: this.meshUrls,
     });
-    this.gfx = buildSceneGraph(this.sim, { hiddenGroups: [3] });
-    this.scene.add(this.gfx.root);
+    const gfx = buildSceneGraph(sim, { hiddenGroups: [3] });
+    this.scene.add(gfx.root);
 
-    this.arms = {
-      left: new ArmIK(this.sim, { prefix: 'left_', siteName: 'left_grasp_site', homeQ: HOME_Q }),
-      right: new ArmIK(this.sim, { prefix: 'right_', siteName: 'right_grasp_site', homeQ: HOME_Q }),
+    const arms = {
+      left: new ArmIK(sim, { prefix: 'left_', siteName: 'left_grasp_site', homeQ: HOME_Q }),
+      right: new ArmIK(sim, { prefix: 'right_', siteName: 'right_grasp_site', homeQ: HOME_Q }),
     };
-    this.retarget = {
-      left: new ClutchRetargeter(this.sim.mj, { posScale: 0.6 }),
-      right: new ClutchRetargeter(this.sim.mj, { posScale: 0.6 }),
+    // posReach is generous because posScale already shrinks hand travel: at
+    // 0.6, half a metre of arm travel is 0.83 m of hand travel, which is past
+    // where an operator would re-clutch anyway.
+    const retargetCfg = { posScale: 0.6, posReach: 0.5, rotReach: 1.2 };
+    const retarget = {
+      left: new ClutchRetargeter(sim.mj, retargetCfg),
+      right: new ClutchRetargeter(sim.mj, retargetCfg),
     };
 
     if (!this.hud) this.hud = new HUD(this.scene);
-    this.sampler = makeSampler(this.sim, this.arms, this.xr, this.level);
+
+    // Commit the new level's state in one synchronous block -- level, sim,
+    // gfx, arms, retarget, and ctx (built inside resetEpisode) all flip
+    // together, so evaluate() can never see a mix of old and new.
+    this.levelIndex = index;
+    this.level = level;
+    this.results = [];
+    this.sim = sim;
+    this.gfx = gfx;
+    this.arms = arms;
+    this.retarget = retarget;
+    this.sampler = makeSampler(sim, arms, this.xr, level);
     this.resetEpisode();
   }
 
   resetEpisode() {
+    // Cancel any pending end-of-episode advance. Without this, resetting
+    // manually during the 1.8 s results pause lets that timer fire on top of
+    // the fresh episode -- resetting it a second time, or skipping a level.
+    clearTimeout(this._endTimer);
+    this._endTimer = null;
+
     const sim = this.sim;
     sim.reset();
     for (const side of ['left', 'right']) {
       const ik = this.arms[side];
-      for (let i = 0; i < 6; i++) sim.data.qpos[ik.qposAdr[i]] = HOME_Q[i];
-      ik.qTarget = Float64Array.from(HOME_Q);
-      for (let i = 0; i < 6; i++) sim.data.ctrl[ik.actIds[i]] = HOME_Q[i];
+      const rest = REST_Q[side];
+      for (let i = 0; i < 6; i++) sim.data.qpos[ik.qposAdr[i]] = rest[i];
+      // Resets the solver goal and the integral term too, not just the
+      // command -- leaving either behind carries the previous episode's
+      // droop correction into the new one.
+      ik.syncToCurrent();
+      for (let i = 0; i < 6; i++) sim.data.ctrl[ik.actIds[i]] = rest[i];
       ik.setGripper(1);
       this.retarget[side].release();
     }
@@ -145,11 +253,19 @@ class App {
       },
       getJoint: (name) => sim.data.qpos[sim.model.jnt_qposadr[sim.id('joint', name)]],
     };
+    // Not 'running' while the level's reset() runs -- some levels call
+    // setBodyPose from here, which throws if it thinks it's mid-episode.
+    // Leaving `this.status` at whatever the *previous* episode ended on
+    // (still 'running', if this reset was a manual R-key/Y-button reset
+    // rather than a post-episode one) would make that guard false-positive
+    // and throw inside the render loop, which looks like a freeze.
+    this.status = 'resetting';
     this.level.reset(this.ctx);
     sim.mj.mj_forward(sim.model, sim.data);
 
     this.metrics.reset();
     this._prevEE = null;
+    this._ikRej = { left: 0, right: 0 };
     this.status = 'running';
     this.tRemaining = this.level.timeLimit;
     this.recorder.start({ levelId: this.level.id, seed: this.seed - 1 });
@@ -204,7 +320,10 @@ class App {
       const ik = arms[side];
       const rt = retarget[side];
 
-      if (!s.valid) { ik.step(...currentTarget(sim, side)); continue; }
+      // No controller data: hold still. Gravity comp still needs to run --
+      // see the holdGravity() call below the clutch handling for why this
+      // can't just be ik.step() with the site's own current pose as target.
+      if (!s.valid) { ik.holdGravity(); continue; }
 
       const clutchEdge = this.xr.consumeClutchEdge(side);
       if (clutchEdge === 'down') {
@@ -223,10 +342,18 @@ class App {
         const r = ik.step(target.pos, target.quat);
         this._ikDbg = this._ikDbg || {};
         this._ikDbg[side] = { ...r, tgt: target.pos };
+        if (r.rejected) this._ikRej[side]++;
         // Buzz only when the leash engages -- the arm is genuinely blocked by
         // contact or a joint limit. `damped` fires during any normal fast slew,
         // so buzzing on that would vibrate continuously and mean nothing.
         if (r.leashed) this.xr.pulse(side, 0.15, 15);
+      } else {
+        // Declutched: hold the last commanded qTarget (still being applied to
+        // the position actuators every tick regardless) but keep the gravity
+        // feedforward fresh. Must not be ik.step() here -- see holdGravity()'s
+        // docstring for the 227 mm drift that produces over a sustained idle
+        // period, which is exactly what "declutched" is.
+        ik.holdGravity();
       }
       ik.setGripper(1 - s.trigger);
     }
@@ -239,6 +366,30 @@ class App {
     this._last = now;
 
     this.xr.update(xrFrame, this.renderer.xr.getReferenceSpace());
+
+    // Y (left secondary) resets the episode, mirroring the 'r' key -- the only
+    // way out of a wedged attempt without taking the headset off.
+    //
+    // Consumed here at render rate rather than in control(): that is where the
+    // edge is produced, and the fixed-step control loop below can run zero
+    // times in a frame whenever the display is faster than the control rate,
+    // which would silently drop presses.
+    if (this.xr.state.left.secondaryEdge) {
+      this.xr.pulse('left', 0.4, 40);
+      this.resetEpisode();
+    }
+
+    // A/B (right primary/secondary) step the curriculum without leaving the
+    // headset, mirroring the desktop 'n'/'p' keys -- those never reach the
+    // page once an immersive session has the headset's focus.
+    if (this.xr.state.right.primaryEdge) {
+      this.xr.pulse('right', 0.4, 40);
+      this.loadLevel(Math.min(this.levelIndex + 1, CURRICULUM.length - 1));
+    }
+    if (this.xr.state.right.secondaryEdge) {
+      this.xr.pulse('right', 0.4, 40);
+      this.loadLevel(Math.max(this.levelIndex - 1, 0));
+    }
 
     // Fixed-rate control, independent of render rate.
     this._ctlAcc += dt;
@@ -264,7 +415,13 @@ class App {
       const s = this.xr.state[side];
       const rt = this.retarget[side];
       const d = this._ikDbg && this._ikDbg[side];
-      const ikStr = d ? `err=${d.posErr.toFixed(4)} leash=${d.leashed ? 1 : 0}` : 'no-ik';
+      // it= is the inner solve's iteration count. Steady 1-2 is healthy; if it
+      // sits at the 8 budget the target is unreachable, not the solver slow.
+      // rej= counts branch-switch rejections, which should be rare.
+      const ikStr = d
+        ? `err=${d.posErr.toFixed(4)} leash=${d.leashed ? 1 : 0}`
+          + ` it=${d.iters}${d.converged ? '' : '!'} rej=${this._ikRej[side]}`
+        : 'no-ik';
       return `${side[0].toUpperCase()} c=${s.clutch ? 1 : 0} eng=${rt.engaged ? 1 : 0}`
         + ` cnt=${rt.clutchCount} ${ikStr}`;
     };
@@ -343,7 +500,8 @@ class App {
     const unlocked = passes >= this.level.gate.needed
       && this.results.length >= this.level.gate.window;
 
-    setTimeout(() => {
+    this._endTimer = setTimeout(() => {
+      this._endTimer = null;
       if (unlocked && this.levelIndex < CURRICULUM.length - 1) {
         this.loadLevel(this.levelIndex + 1);
       } else {
@@ -351,11 +509,6 @@ class App {
       }
     }, 1800);
   }
-}
-
-function currentTarget(sim, side) {
-  const p = sim.sitePose(`${side}_grasp_site`);
-  return [p.pos, p.quat];
 }
 
 new App().boot().catch((e) => {

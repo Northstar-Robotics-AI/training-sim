@@ -89,6 +89,23 @@ export class Sim {
     this._accum = 0;
   }
 
+  /**
+   * A second MjData used only for kinematics queries at hypothetical joint
+   * configurations -- the IK inner loop needs FK and a Jacobian at
+   * configurations the arm is not in, and doing that in place would corrupt
+   * the site poses that rendering and level logic read on the same frame.
+   *
+   * It is never stepped, so it carries no contact or velocity state; whatever
+   * qpos was last written into it is all it holds. Callers must write every
+   * joint they care about before calling mj_kinematics on it. Everything else
+   * stays at qpos0, which is fine for a Jacobian: a site's pose depends only
+   * on the joints in its own kinematic chain.
+   */
+  scratch() {
+    if (!this._scratch) this._scratch = new this.mj.MjData(this.model);
+    return this._scratch;
+  }
+
   sitePose(name) {
     const s = this.data.site(name);
     const q = mat2Quat(this.mj, new Float64Array(4), s.xmat);

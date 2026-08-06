@@ -53,7 +53,7 @@ for (let i = 0; i < 6; i++) {
   sim.data.qpos[ik.qposAdr[i]] = HOME_Q[i];
   sim.data.ctrl[ik.actIds[i]] = HOME_Q[i];
 }
-ik.qTarget = Float64Array.from(HOME_Q);
+ik.syncToCurrent();   // command, solver goal and integral term together
 sim.mj.mj_forward(sim.model, sim.data);
 
 // 1. The site pose quaternion must be a real unit quaternion, not zeros.
@@ -83,15 +83,30 @@ check('xrQuatToMj maps XR yaw to MuJoCo yaw', qErr < 1e-6,
   `err=${qErr.toExponential(2)} q=[${Array.from(qXr).map((v) => v.toFixed(6))}]`);
 
 // 4. Clutch delta: hand moves 0.1 m, scaled target moves 0.06 m from the anchor.
+//    The input EMA means one call only gets posAlpha of the way there, so hold
+//    the hand still and let the filter settle before asserting the mapping --
+//    the point of the check is the scale factor, not the absence of a filter.
 const rt = new ClutchRetargeter(sim.mj, { posScale: 0.6 });
 const handQuat = xrQuatToMj(sim.mj, { x: 0, y: 0, z: 0, w: 1 });
-rt.engage(xrPosToMj({ x: 0, y: 1.2, z: -0.3 }), handQuat, pose);
-const t0 = rt.target(xrPosToMj({ x: 0, y: 1.2, z: -0.3 }), handQuat);
-const t1 = rt.target(xrPosToMj({ x: 0.1, y: 1.2, z: -0.3 }), handQuat);
+const handAt = (x) => xrPosToMj({ x, y: 1.2, z: -0.3 });
+rt.engage(handAt(0), handQuat, pose);
+const t0 = rt.target(handAt(0), handQuat);
+let t1;
+for (let i = 0; i < 200; i++) t1 = rt.target(handAt(0.1), handQuat);
 const anchorErr = Math.hypot(...[0, 1, 2].map((i) => t0.pos[i] - pose.pos[i]));
 check('target at engage equals current EE', anchorErr < 1e-12, `d=${anchorErr.toExponential(1)}`);
 check('hand delta scales into target', Math.abs((t1.pos[0] - t0.pos[0]) - 0.06) < 1e-9,
   `dx=${(t1.pos[0] - t0.pos[0]).toFixed(4)}`);
+
+// 4b. Reach clamp: a hand delta far past posReach must truncate to it, so the
+//     solver is never handed a target the arm cannot follow.
+const rtFar = new ClutchRetargeter(sim.mj, { posScale: 1.0, posReach: 0.2 });
+rtFar.engage(handAt(0), handQuat, pose);
+let tFar;
+for (let i = 0; i < 400; i++) tFar = rtFar.target(handAt(1.5), handQuat);
+const reach = Math.hypot(...[0, 1, 2].map((i) => tFar.pos[i] - pose.pos[i]));
+check('target is clamped to posReach', Math.abs(reach - 0.2) < 1e-6,
+  `reach=${reach.toFixed(4)}m`);
 
 // 5. Closed loop: hold a target 8 cm away and confirm the gripper site actually
 //    gets there. This is the end-to-end assertion -- it fails on a zero
