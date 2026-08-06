@@ -4,8 +4,9 @@
 //   grip (button 1)     clutch  -- hold to move the arm
 //   trigger (button 0)  gripper -- analog, so the operator can feel a soft close
 //   Y (button 5, left)  reset episode, same as the 'r' key
-//   A / X (button 4)    read as primaryEdge, currently unbound
-//   B (button 5, right) read as secondaryEdge, currently unbound
+//   A (button 4, right) next level, same as the 'n' key
+//   B (button 5, right) previous level, same as the 'p' key
+//   X (button 4, left)  read as primaryEdge, currently unbound
 //
 // Edges here are recomputed every update() rather than latched, so they must be
 // consumed at render rate. The clutch is the exception and says why.

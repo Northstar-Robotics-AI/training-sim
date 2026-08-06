@@ -107,37 +107,55 @@ class App {
   }
 
   async loadLevel(index) {
-    this.levelIndex = index;
-    this.level = CURRICULUM[index];
-    this.results = [];
+    // `level` stays local until everything it depends on is ready. The render
+    // loop keeps ticking during the awaits below (evaluate() runs every frame
+    // whenever status is still 'running', e.g. a manual skip mid-episode), and
+    // if this.level flipped early it would run the *new* level's tick/success
+    // against the *old*, still-current this.ctx/this.sim -- reading a site
+    // name (like target_site) that only exists in the model being compiled,
+    // not the one still loaded. That throw is uncaught inside
+    // setAnimationLoop's callback, which silently kills the whole render loop
+    // -- exactly what looked like a freeze switching levels.
+    const level = CURRICULUM[index];
 
     // Compiling per level rather than hiding unused props keeps each level's
     // contact set minimal, which is the difference between 90 Hz and 45 Hz
     // once a level has a dozen loose objects in it.
-    const xml = composeSceneXML(this.baseXml, this.level);
+    const xml = composeSceneXML(this.baseXml, level);
     if (this.gfx) this.scene.remove(this.gfx.root);
-    this.sim = await new Sim().init({
+    const sim = await new Sim().init({
       xmlUrl: URL.createObjectURL(new Blob([xml], { type: 'text/xml' })),
       meshUrls: MESHES,
     });
-    this.gfx = buildSceneGraph(this.sim, { hiddenGroups: [3] });
-    this.scene.add(this.gfx.root);
+    const gfx = buildSceneGraph(sim, { hiddenGroups: [3] });
+    this.scene.add(gfx.root);
 
-    this.arms = {
-      left: new ArmIK(this.sim, { prefix: 'left_', siteName: 'left_grasp_site', homeQ: HOME_Q }),
-      right: new ArmIK(this.sim, { prefix: 'right_', siteName: 'right_grasp_site', homeQ: HOME_Q }),
+    const arms = {
+      left: new ArmIK(sim, { prefix: 'left_', siteName: 'left_grasp_site', homeQ: HOME_Q }),
+      right: new ArmIK(sim, { prefix: 'right_', siteName: 'right_grasp_site', homeQ: HOME_Q }),
     };
     // posReach is generous because posScale already shrinks hand travel: at
     // 0.6, half a metre of arm travel is 0.83 m of hand travel, which is past
     // where an operator would re-clutch anyway.
     const retargetCfg = { posScale: 0.6, posReach: 0.5, rotReach: 1.2 };
-    this.retarget = {
-      left: new ClutchRetargeter(this.sim.mj, retargetCfg),
-      right: new ClutchRetargeter(this.sim.mj, retargetCfg),
+    const retarget = {
+      left: new ClutchRetargeter(sim.mj, retargetCfg),
+      right: new ClutchRetargeter(sim.mj, retargetCfg),
     };
 
     if (!this.hud) this.hud = new HUD(this.scene);
-    this.sampler = makeSampler(this.sim, this.arms, this.xr, this.level);
+
+    // Commit the new level's state in one synchronous block -- level, sim,
+    // gfx, arms, retarget, and ctx (built inside resetEpisode) all flip
+    // together, so evaluate() can never see a mix of old and new.
+    this.levelIndex = index;
+    this.level = level;
+    this.results = [];
+    this.sim = sim;
+    this.gfx = gfx;
+    this.arms = arms;
+    this.retarget = retarget;
+    this.sampler = makeSampler(sim, arms, this.xr, level);
     this.resetEpisode();
   }
 
@@ -294,6 +312,18 @@ class App {
     if (this.xr.state.left.secondaryEdge) {
       this.xr.pulse('left', 0.4, 40);
       this.resetEpisode();
+    }
+
+    // A/B (right primary/secondary) step the curriculum without leaving the
+    // headset, mirroring the desktop 'n'/'p' keys -- those never reach the
+    // page once an immersive session has the headset's focus.
+    if (this.xr.state.right.primaryEdge) {
+      this.xr.pulse('right', 0.4, 40);
+      this.loadLevel(Math.min(this.levelIndex + 1, CURRICULUM.length - 1));
+    }
+    if (this.xr.state.right.secondaryEdge) {
+      this.xr.pulse('right', 0.4, 40);
+      this.loadLevel(Math.max(this.levelIndex - 1, 0));
     }
 
     // Fixed-rate control, independent of render rate.
