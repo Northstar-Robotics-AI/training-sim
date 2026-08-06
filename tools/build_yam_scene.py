@@ -31,6 +31,12 @@ KD = [5.0, 5.0, 5.0, 1.5, 1.5, 1.5]
 # np.ones() rather than the yaml values). See the note in src/control/ik.js.
 GRAVITY_COMP_FACTOR = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 GRIP_KP, GRIP_KD = 800.0, 20.0
+# Per-joint peak motor torque, Nm. yam.yml's motor_list puts DM4340 on joints
+# 1-3 and DM4310 on 4-6; the Damiao datasheets give DM4340 9 Nm rated / 27 Nm
+# peak (40:1) and DM4310 3 Nm rated / 7-12.5 Nm peak (10:1), and i2rt's own CAN
+# protocol ceilings (motor_drivers/utils.py MotorConstants.TORQUE_MAX) are 28
+# and 10 -- two independent sources agreeing. See set_joint_torque_limits.
+JOINT_PEAK_TORQUE = [27.0, 27.0, 27.0, 10.0, 10.0, 10.0]
 
 # Capsule collision proxies replacing the STL hulls, per link.
 # (fromto in the link's own frame, radius). Rough but cheap; refine visually.
@@ -83,14 +89,38 @@ def add_actuators(spec, sides):
         g.gaintype, g.biastype = mujoco.mjtGain.mjGAIN_FIXED, mujoco.mjtBias.mjBIAS_AFFINE
         g.gainprm[0], g.biasprm[1], g.biasprm[2] = GRIP_KP, -GRIP_KP, -GRIP_KD
         g.ctrlrange, g.ctrllimited = [0.0, 0.0475], True
-        # No gravity-comp actuators on purpose. The feedforward is applied at
-        # runtime through data.qfrc_applied (src/control/ik.js). Routing it
-        # through a torque actuator instead puts it inside the joint's
-        # actuatorfrcrange (+/-10 Nm, inherited from the i2rt arm model), where
-        # it shares one budget with the PD servo -- and the arm's own weight at
-        # full extension already needs 15.3 Nm at joint2, so the feedforward got
-        # clipped short of holding the arm up. qfrc_applied is outside that
-        # budget, matching i2rt's own sim (sim_robot.py).
+        # Gravity-comp feedforward: plain torque actuators, one per arm joint,
+        # summed with the PD actuator above and clamped together by the joint's
+        # actuatorfrcrange (see set_joint_torque_limits) -- gravity comp and the
+        # servo share one budget because on hardware they share one motor.
+        # Driven at runtime from qfrc_bias * GRAVITY_COMP_FACTOR
+        # (src/control/ik.js), not from a fixed ctrl value here.
+        for i in range(6):
+            c = spec.add_actuator(name=f"{side}_gcomp{i+1}")
+            c.target, c.trntype = f"{side}_joint{i+1}", mujoco.mjtTrn.mjTRN_JOINT
+            c.gaintype, c.biastype = mujoco.mjtGain.mjGAIN_FIXED, mujoco.mjtBias.mjBIAS_NONE
+            c.gainprm[0] = 1.0
+
+
+def set_joint_torque_limits(spec, sides):
+    """Override the arm model's inherited actuatorfrcrange with the real motors'.
+
+    i2rt's yam.xml carries actuatorfrcrange="-10 10" on every joint, but that
+    model declares no actuators at all, so the attribute is inert there and was
+    never sized against anything. Here it is live and clamps gcomp + PD
+    together, so it has to be the motor's real peak torque or the arm cannot
+    hold itself up: joints 1-3 are DM4340 and need ~15 Nm at joint2 at full
+    extension, which 10 Nm cannot supply.
+
+    Peak, not rated, because MuJoCo has no thermal model. A real YAM holding an
+    extended pose does run joint2 above its 9 Nm continuous rating and heats up
+    -- that is why i2rt's driver monitors temp_mos/temp_rotor -- but it can
+    deliver the torque, so a hard clamp at the rated value would be wrong in the
+    other direction.
+    """
+    for side in sides:
+        for i in range(6):
+            spec.joint(f"{side}_joint{i+1}").actfrcrange = JOINT_PEAK_TORQUE[i] * np.array([-1.0, 1.0])
 
 
 def sanitize_xml(xml):
@@ -147,6 +177,7 @@ def build(args):
         spec.attach(arm, prefix=f"{side}_", frame=f)
 
     add_actuators(spec, [s[0] for s in sides])
+    set_joint_torque_limits(spec, [s[0] for s in sides])
     model = spec.compile()
     xml = sanitize_xml(spec.to_xml())
 

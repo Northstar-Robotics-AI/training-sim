@@ -63,24 +63,25 @@ export class ArmIK {
     for (let i = 1; i <= DOF; i++) this.actIds.push(sim.id('actuator', `${prefix}act${i}`));
     this.gripperAct = sim.id('actuator', `${prefix}gripper`);
 
-    // Gravity-compensation feedforward. Applied through data.qfrc_applied, not
-    // through an actuator, and that distinction is the whole ballgame:
-    // actuatorfrcrange is a limit on *actuator* force, so routing the
-    // feedforward through a motor actuator puts gravity comp and the position
-    // servo into one shared torque budget. The arm's own weight at full
-    // extension needs 15.3 Nm at joint2 against a +/-10 Nm range, so the
-    // feedforward alone was clipped 5 Nm short of holding the arm up and the
-    // servo got nothing -- measured, the gripper fell 67 mm at 774 mm reach
-    // (0 mm here). qfrc_applied is outside that budget, which leaves
-    // actuatorfrcrange meaning what it should: a limit on the servo.
+    // Gravity-compensation feedforward actuators, summed with the position
+    // actuator at each joint and clamped together by the joint's
+    // actuatorfrcrange.
     //
-    // This is also what i2rt's own MuJoCo sim does -- sim_robot.py writes
-    // `self._data.qfrc_applied[:nq_arm] = grav[:nq_arm]` -- and it mirrors the
-    // hardware, where gcomp is summed into the motor torque inside the 1 kHz
-    // loop and `clip_motor_torque` defaults to inf (motor_chain_robot.py).
+    // Sharing one clamped budget is deliberate and is what the hardware does:
+    // the motor is handed tau = tau_PD + tau_gcomp and delivers up to its own
+    // limit, so gravity comp and the servo genuinely do compete. Routing the
+    // feedforward around the clamp instead (via qfrc_applied, which is what
+    // i2rt's own sim does) makes gravity comp unbounded, and the arm then holds
+    // poses a real YAM cannot -- 2 kg at full extension wants 30 Nm from a
+    // 27 Nm motor. The budget is bounded here so the sim runs out of torque
+    // where the hardware does.
     //
-    // Note qfrc_applied persists across mj_step, exactly like ctrl: every tick
-    // must write all six entries or the previous tick's torque keeps acting.
+    // What was actually wrong was the *size* of the budget: these joints
+    // inherited actuatorfrcrange="-10 10" from i2rt's arm model, where the
+    // attribute is inert because that model has no actuators at all. Joints 1-3
+    // are DM4340 (27 Nm peak), so 10 Nm was 2.7x too tight and the arm could
+    // not hold its own weight past mid-reach. See the actuator block in
+    // bimanual_yam.xml for the numbers.
     //
     // The factor is unity, not i2rt's [1.0, 1.1, 1.1, 1.2, 1.0, 1.0]. Those live in
     // vendor/i2rt/i2rt/robots/config/yam.yml as a *hardware* calibration: the
@@ -95,6 +96,8 @@ export class ArmIK {
     // values (get_robot.py, `sim_grav_comp`). Measured on a 5 s declutched
     // hold, contact-free poses: the yaml factors drift the gripper 5-13 mm,
     // unity drifts 0.0 mm.
+    this.gcompActIds = [];
+    for (let i = 1; i <= DOF; i++) this.gcompActIds.push(sim.id('actuator', `${prefix}gcomp${i}`));
     this.gravityCompFactor = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
     this.homeQ = homeQ ?? new Array(DOF).fill(0);
@@ -138,9 +141,12 @@ export class ArmIK {
     this.stepTol = 1e-4;
 
     // --- outer rate limit -----------------------------------------------
-    // rad per tick; at 100 Hz that is 3 rad/s at the base and 8 at the wrist.
+    // rad per tick; at 100 Hz that is 1.5 rad/s at the base and 16 at the wrist.
     // Split so a wrist correction is not rate-limited like a shoulder.
-    this.maxDq = Float64Array.from([0.03, 0.03, 0.03, 0.08, 0.08, 0.08]);
+
+    // originally: [0.03, 0.03, 0.03, 0.08, 0.08, 0.08]
+    // too weird: [0.0075, 0.0075, 0.0075, 0.3, 0.16, 0.16]);
+    this.maxDq = Float64Array.from([0.015, 0.015, 0.015, 0.16, 0.16, 0.16]);
     // Keep the command off the mechanical stop, so the position actuator is
     // not fighting the joint-limit constraint solver (which buzzes).
     this.limitMargin = 0.02;
@@ -479,7 +485,10 @@ export class ArmIK {
   }
 
   /**
-   * Write the gravity feedforward into this arm's six generalised-force slots.
+   * Drive this arm's six gravity-comp actuators. Mirrors i2rt's
+   * motor_torques = pd_torque + g * gravity_comp_factor (motor_chain_robot.py);
+   * the sum is clamped at the joint by actuatorfrcrange, which is the motor's
+   * peak torque, exactly as the real motor clamps its own output.
    *
    * qfrc_bias is MuJoCo's own Coriolis+gravity generalised force, recomputed
    * each mj_step, so this reads last tick's value -- a one-tick zero-order hold
@@ -491,7 +500,7 @@ export class ArmIK {
   _applyGravityComp() {
     const { data } = this.sim;
     for (let c = 0; c < DOF; c++) {
-      data.qfrc_applied[this.dofAdr[c]] = data.qfrc_bias[this.dofAdr[c]] * this.gravityCompFactor[c];
+      data.ctrl[this.gcompActIds[c]] = data.qfrc_bias[this.dofAdr[c]] * this.gravityCompFactor[c];
     }
   }
 

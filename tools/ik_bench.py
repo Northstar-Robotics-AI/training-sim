@@ -113,15 +113,16 @@ class ArmBase:
         self.lo, self.hi = model.jnt_range[jid, 0], model.jnt_range[jid, 1]
         self.act = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f'{prefix}act{i}')
                     for i in range(1, 7)]
-        # Gravity-comp feedforward, applied through qfrc_applied rather than an
-        # actuator -- mirrors src/control/ik.js. Without it the official (soft)
-        # i2rt kp/kd below let the arm droop noticeably under its own weight;
-        # through an actuator it would sit inside actuatorfrcrange and get
-        # clipped at full extension. See the note in src/control/ik.js.
-        #
+        # Gravity-comp feedforward actuators, summed with the position actuator
+        # at each joint and clamped together by actuatorfrcrange (the motor's
+        # peak torque) -- mirrors src/control/ik.js. Without this the official
+        # (soft) i2rt kp/kd below let the arm droop noticeably under its own
+        # weight; see the i_gain re-measurement note in ConvergedIK.step.
+        self.gcomp_act = [mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f'{prefix}gcomp{i}')
+                          for i in range(1, 7)]
         # Unity, not yam.yml's [1.0, 1.1, 1.1, 1.2, 1.0, 1.0] -- that is a
         # hardware trim for the real motors, and here the gravity model is the
-        # plant.
+        # plant. See the note in src/control/ik.js.
         self.grav_factor = np.ones(6)
         self.sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, site)
         self.home = np.array(HOME, float)
@@ -142,8 +143,8 @@ class ArmBase:
     def emit(self):
         for i, a in enumerate(self.act):
             self.d.ctrl[a] = self.qt[i]
-        for i, dof in enumerate(self.dof):
-            self.d.qfrc_applied[dof] = self.d.qfrc_bias[dof] * self.grav_factor[i]
+        for i, a in enumerate(self.gcomp_act):
+            self.d.ctrl[a] = self.d.qfrc_bias[self.dof[i]] * self.grav_factor[i]
 
 
 class IncrementalIK(ArmBase):
