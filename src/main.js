@@ -80,6 +80,7 @@ class App {
     this._ctlAcc = 0;
     this._physCount = 0;
     this._physWindow = 0;
+    this._loadGen = 0;
   }
 
   async boot() {
@@ -176,16 +177,28 @@ class App {
     // -- exactly what looked like a freeze switching levels.
     const level = CURRICULUM[index];
 
+    // Fast level-skipping (holding n/p) fires loadLevel again before the
+    // previous call's `await`s below resolve. Each call used to snapshot
+    // this.gfx and remove it *before* awaiting, so a second call's removal
+    // ran against the same stale (pre-first-call) this.gfx -- by the time
+    // the first call's gfx.root landed in the scene, nothing was left to
+    // remove it. Objects and arms from skipped-past levels would pile up.
+    // A generation token makes only the most recent call commit; every
+    // earlier one bails out after its awaits instead of touching the scene.
+    const gen = ++this._loadGen;
+
     // Compiling per level rather than hiding unused props keeps each level's
     // contact set minimal, which is the difference between 90 Hz and 45 Hz
     // once a level has a dozen loose objects in it.
     const xml = composeSceneXML(this.baseXml, level);
-    if (this.gfx) this.scene.remove(this.gfx.root);
     const sim = await new Sim().init({
       xmlUrl: URL.createObjectURL(new Blob([xml], { type: 'text/xml' })),
       meshUrls: this.meshUrls,
     });
     const gfx = buildSceneGraph(sim, { hiddenGroups: [3] });
+    if (gen !== this._loadGen) return; // superseded by a later loadLevel call
+
+    if (this.gfx) this.scene.remove(this.gfx.root);
     this.scene.add(gfx.root);
 
     const arms = {

@@ -363,9 +363,10 @@ export const CURRICULUM = [
     reset(ctx) {
       const r = ctx.rng;
       placeFree(ctx.sim, 'cup', [L.x + (r() - 0.5) * 0.1, L.y + (r() - 0.5) * 0.1, TABLE_Z + 0.02]);
-      placeFree(ctx.sim, 'scoop', [R.x + (r() - 0.5) * 0.08, R.y, TABLE_Z + 0.03]);
+      const scoopX = R.x + (r() - 0.5) * 0.08;
+      placeFree(ctx.sim, 'scoop', [scoopX, R.y, TABLE_Z + 0.03]);
       for (let i = 0; i < 3; i++) {
-        placeFree(ctx.sim, `bead${i}`, [R.x - 0.02 + i * 0.02, R.y, TABLE_Z + 0.05]);
+        placeFree(ctx.sim, `bead${i}`, [scoopX - 0.02 + i * 0.02, R.y, TABLE_Z + 0.05]);
       }
       ctx.state.inCup = 0;
     },
