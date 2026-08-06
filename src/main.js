@@ -12,9 +12,18 @@ import { composeSceneXML, makeRng, EpisodeMetrics } from './levels/Level.js';
 import { Recorder, makeSampler } from './record/recorder.js';
 import { HUD } from './ui/hud.js';
 
-const MESHES = ['base', 'link1', 'link2', 'link3', 'link4', 'link5',
-  'gripper', 'tip_left', 'tip_right'].map((m) => `/assets/yam/meshes/${m}.stl`);
 const BASE_XML_URL = '/assets/yam/bimanual_yam.xml';
+
+// The mesh list used to be hand-maintained here, which drifted the moment
+// the generator (tools/build_yam_scene.py) started emitting collision hulls
+// alongside the visual STLs -- the WASM loader would 404 on any <mesh file>
+// this list didn't happen to mention. The XML's own <asset> block is the
+// actual source of truth, so read it from there instead.
+function meshUrlsFromXml(xml) {
+  const urls = [];
+  for (const m of xml.matchAll(/<mesh\b[^>]*\bfile="([^"]+)"/g)) urls.push(`/assets/yam/meshes/${m[1]}`);
+  return urls;
+}
 
 // Nullspace posture bias: elbow up, wrist level. A mid-range working posture,
 // deliberately *not* the rest pose below -- biasing the solver toward a folded
@@ -41,6 +50,25 @@ const REST_Q = {
 // can perceive and well below what the WASM build struggles with.
 const CONTROL_HZ = 100;
 
+// Where the VR user's play-space origin lands in the scene, in three.js world
+// coordinates (Y-up). The arm bases sit at world x=-0.05, centred on z=0 (see
+// bimanual_yam.xml's left/right_base pos, rotated by sceneBuilder's MJ_TO_XR).
+// Base spot is a stride behind them with both arms and the table in frame --
+// third person, not standing inside the robot -- then nudged 30cm forward and
+// 50cm up from there for a better vantage over the table. y=0 would be the
+// physical floor ('local-floor' puts the reference space origin there and the
+// headset supplies actual eye height on top), so +0.5 raises the origin itself
+// to roughly chest height.
+const XR_SPAWN_POS = new THREE.Vector3(-1.1 + 0.3, 0.5, 0);
+// Faces +X (toward the arms/table) from the default -Z forward, then tilts
+// 20 degrees down to look more at the table than the horizon. The down-tilt
+// is a rotation about world +Z, which is where +X-facing's local right axis
+// lands after the yaw -- so it has to be composed on the left (applied after
+// the yaw), not folded into one axis-angle.
+const XR_SPAWN_YAW = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
+const XR_SPAWN_TILT = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -20 * Math.PI / 180);
+const XR_SPAWN_QUAT = XR_SPAWN_TILT.clone().multiply(XR_SPAWN_YAW);
+
 class App {
   constructor() {
     this.levelIndex = 0;
@@ -56,6 +84,7 @@ class App {
 
   async boot() {
     this.baseXml = await fetch(BASE_XML_URL).then((r) => r.text());
+    this.meshUrls = meshUrlsFromXml(this.baseXml);
     this.initRenderer();
     await this.loadLevel(0);
     this.renderer.setAnimationLoop((t, frame) => this.frame(t, frame));
@@ -73,6 +102,16 @@ class App {
     this.camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 40);
     this.camera.position.set(-0.9, 1.5, 0.9);
 
+    // The XR device pose overwrites camera.matrix directly every frame while
+    // presenting, so repositioning the camera itself for VR would also have
+    // to un-happen the moment the session ends. Instead the camera (and the
+    // controllers, so tracked hands stay consistent with where the head
+    // lands) sit under a dolly that's identity on the desktop path and only
+    // gets moved on 'sessionstart' below.
+    this.xrRig = new THREE.Group();
+    this.scene.add(this.xrRig);
+    this.xrRig.add(this.camera);
+
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setSize(innerWidth, innerHeight);
@@ -89,7 +128,26 @@ class App {
     this.orbit.update();
 
     this.xr = new XRInput(this.renderer);
-    for (let i = 0; i < 2; i++) this.scene.add(this.renderer.xr.getController(i));
+    for (let i = 0; i < 2; i++) this.xrRig.add(this.renderer.xr.getController(i));
+
+    // Placed fresh on every 'sessionstart' -- including the first one after a
+    // page reload -- so the operator always steps into VR standing behind the
+    // arms, never wherever their headset happened to be tracking from.
+    this.renderer.xr.addEventListener('sessionstart', () => {
+      this.xrRig.position.copy(XR_SPAWN_POS);
+      this.xrRig.quaternion.copy(XR_SPAWN_QUAT);
+    });
+    // The XR pose leaves camera.matrix in rig-local coordinates from wherever
+    // the headset last was; with the rig back at identity that would render
+    // from a bogus spot on the desktop path until the user next drags to
+    // orbit. Reset both so exiting VR lands back on the desktop framing.
+    this.renderer.xr.addEventListener('sessionend', () => {
+      this.xrRig.position.set(0, 0, 0);
+      this.xrRig.quaternion.identity();
+      this.camera.position.set(-0.9, 1.5, 0.9);
+      this.camera.quaternion.identity();
+      this.orbit.update();
+    });
 
     addEventListener('resize', () => {
       this.camera.aspect = innerWidth / innerHeight;
@@ -125,7 +183,7 @@ class App {
     if (this.gfx) this.scene.remove(this.gfx.root);
     const sim = await new Sim().init({
       xmlUrl: URL.createObjectURL(new Blob([xml], { type: 'text/xml' })),
-      meshUrls: MESHES,
+      meshUrls: this.meshUrls,
     });
     const gfx = buildSceneGraph(sim, { hiddenGroups: [3] });
     this.scene.add(gfx.root);

@@ -13,6 +13,8 @@ One flat XML + one flat mesh dir keeps the loader trivial.
 import argparse, os, re, shutil, time
 import numpy as np
 import mujoco
+import trimesh
+import coacd
 
 # --- joint servo gains (position actuators). Official i2rt values --
 # vendor/i2rt/i2rt/robots/config/yam.yml -- not hand-tuned. They're soft
@@ -44,9 +46,45 @@ PROXY = {
     "link1": ([-0.06, 0.0, 0.0, 0.02, 0.0, 0.0], 0.055),
     "link2": ([0.0, -0.033, 0.01, 0.0, -0.033, 0.25], 0.05),
     "link3": ([-0.055, -0.034, -0.005, -0.055, -0.034, -0.235], 0.045),
-    "link4": ([-0.055, 0.033, -0.005, -0.055, 0.033, -0.07], 0.042),
+    # Wrist end pulled back from -0.07 to -0.064: giving the gripper real mesh
+    # collision (see MESH_COLLISION) revealed this capsule's old reach poked
+    # ~0.8mm into the gripper mount at rest, registering a false self-collision
+    # on every idle frame.
+    "link4": ([-0.055, 0.033, -0.005, -0.055, 0.033, -0.064], 0.042),
     "link5": ([0.0, 0.0, 0.0, 0.04, 0.0, -0.03], 0.04),
 }
+
+# gripper/tip_left/tip_right get no capsule proxy and no single-mesh convex
+# hull either: both pad real empty space around a part that isn't
+# capsule/box-shaped, and that slack is exactly what you feel as "the object
+# registers as gripped before the fingers actually touch it," or "the palm
+# hits things before it visually looks like it should." These instead collide
+# on a CoACD convex decomposition of their own mesh -- a handful of small
+# convex hulls whose union hugs the real (non-convex) shape, rather than one
+# hull bridging every concavity. See decompose_collision_mesh / MESH_COLLISION.
+MESH_COLLISION = {"gripper", "tip_left", "tip_right"}
+
+# threshold/max_convex_hull trade decomposition tightness for part count (and
+# build time); the mcts_*/resolution knobs are turned down from CoACD's
+# defaults purely for speed -- this runs at asset-build time, not per frame,
+# but a few minutes per mesh at the defaults is still needless. ~8 hulls gets
+# the gripper palm from ~2x the real mesh volume (single convex hull) down to
+# ~1.4x, in well under a minute.
+COACD_ARGS = dict(
+    threshold=0.08, max_convex_hull=8,
+    mcts_nodes=8, mcts_iterations=25, mcts_max_depth=2,
+    preprocess_resolution=20, resolution=1500,
+)
+
+
+def decompose_collision_mesh(stl_path):
+    """Convex-decompose a mesh (CoACD) into a handful of convex hulls whose
+    union tightly bounds the real shape. Returns [(vertices, faces), ...]."""
+    coacd.set_log_level("error")
+    tm = trimesh.load(stl_path, process=False)
+    parts = coacd.run_coacd(coacd.Mesh(tm.vertices, tm.faces), **COACD_ARGS)
+    return [(np.asarray(v, dtype=np.float64), np.asarray(f, dtype=np.int32))
+            for v, f in parts]
 
 
 def arm_with_gripper(arm_xml, grip_xml):
@@ -57,11 +95,22 @@ def arm_with_gripper(arm_xml, grip_xml):
 
 
 def add_collision_proxies(spec, use_proxies):
-    """Demote STL geoms to visual-only and add capsule collision proxies."""
+    """Demote STL geoms to visual-only and add capsule collision proxies.
+    gripper/tip_left/tip_right are demoted too -- their real collision geoms
+    are convex-decomposition hulls added later, once both arms exist in the
+    top-level spec (see add_gripper_collision_hulls)."""
     if not use_proxies:
         return
     for body in spec.bodies:
-        base = body.name.split("_", 1)[-1] if "_" in body.name else body.name
+        # Strip a "left_"/"right_" side prefix only -- a plain split("_", 1)
+        # also mangles unprefixed names that contain their own underscore
+        # (tip_left/tip_right), turning them into "left"/"right" and silently
+        # dropping them out of PROXY.
+        base = body.name
+        for side_prefix in ("left_", "right_"):
+            if base.startswith(side_prefix):
+                base = base[len(side_prefix):]
+                break
         for g in body.geoms:
             if g.type == mujoco.mjtGeom.mjGEOM_MESH:
                 g.contype, g.conaffinity = 0, 0
@@ -74,6 +123,29 @@ def add_collision_proxies(spec, use_proxies):
                               rgba=[0, 1, 0, 0.25], group=3,
                               condim=3, mass=0.0)
             c.density = 0.0
+
+
+def add_gripper_collision_hulls(spec, sides, mesh_out, hull_parts):
+    """Add the CoACD collision hulls (see decompose_collision_mesh) to both
+    arms' gripper/tip_left/tip_right bodies. Runs on the fully-assembled
+    top-level spec (bodies named e.g. "left_gripper") so each mesh asset is
+    written once and shared by both arms, same as the visual STLs."""
+    for base, parts in hull_parts.items():
+        for i, (verts, faces) in enumerate(parts):
+            name = f"{base}_col{i}"
+            trimesh.Trimesh(vertices=verts, faces=faces).export(
+                os.path.join(mesh_out, f"{name}.stl"))
+            spec.add_mesh(name=name, file=f"{name}.stl")
+    for side in sides:
+        for base, parts in hull_parts.items():
+            body = spec.body(f"{side}_{base}")
+            for i in range(len(parts)):
+                g = body.add_geom(name=f"{side}_{base}_col{i}",
+                                  type=mujoco.mjtGeom.mjGEOM_MESH,
+                                  meshname=f"{base}_col{i}",
+                                  rgba=[0, 1, 0, 0.25], group=3,
+                                  condim=3, mass=0.0)
+                g.density = 0.0
 
 
 def add_actuators(spec, sides):
@@ -123,8 +195,14 @@ def set_joint_torque_limits(spec, sides):
             spec.joint(f"{side}_joint{i+1}").actfrcrange = JOINT_PEAK_TORQUE[i] * np.array([-1.0, 1.0])
 
 
-def sanitize_xml(xml):
-    """Fix two things MjSpec.to_xml() emits that MuJoCo then refuses to reload."""
+def sanitize_xml(xml, mesh_out):
+    """Fix things MjSpec.to_xml() emits that MuJoCo then refuses to reload, or
+    that leak build-machine-local detail into the shipped asset."""
+    # 0. meshdir was set to mesh_out's absolute path so the collision hulls
+    # (written straight into mesh_out, see add_gripper_collision_hulls) would
+    # resolve at compile time; the shipped XML needs the portable relative
+    # form the browser's meshdir="meshes/" fetch convention expects.
+    xml = xml.replace(f'meshdir="{mesh_out}"', 'meshdir="meshes/"')
     # 1. attach() writes <default class="X"><default class="X"/></default>
     xml = re.sub(r'<default class="([^"]+)">\s*<default class="\1"\s*/>\s*</default>',
                  r'<default class="\1"/>', xml)
@@ -150,13 +228,33 @@ def build(args):
     root = args.i2rt_models
     arm_xml = os.path.join(root, "arm/yam/yam.xml")
     grip_xml = os.path.join(root, "gripper/linear_4310/linear_4310.xml")
+    grip_assets = os.path.join(root, "gripper/linear_4310/assets")
+
+    out = args.out
+    mesh_out = os.path.abspath(os.path.join(out, "meshes"))
+    os.makedirs(mesh_out, exist_ok=True)
+    for src in (os.path.join(root, "arm/yam/assets"), grip_assets):
+        for fn in os.listdir(src):
+            shutil.copy(os.path.join(src, fn), os.path.join(mesh_out, fn))
+
+    hull_parts = {}
+    if args.collision_proxies:
+        for base in MESH_COLLISION:
+            print(f"[coacd] decomposing {base}.stl ...")
+            hull_parts[base] = decompose_collision_mesh(
+                os.path.join(grip_assets, f"{base}.stl"))
+            print(f"[coacd] {base}: {len(hull_parts[base])} convex hulls")
 
     spec = mujoco.MjSpec()
     spec.compiler.degree = False
     spec.compiler.autolimits = True
     spec.option.timestep = args.timestep
     spec.option.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
-    spec.meshdir = "meshes"
+    # Absolute for now so spec.compile() below can find both the copied
+    # visual STLs and the collision hulls written directly into mesh_out;
+    # sanitize_xml rewrites it back to the portable "meshes/" the browser
+    # expects before the XML is written out.
+    spec.meshdir = mesh_out
 
     spec.worldbody.add_geom(name="floor", type=mujoco.mjtGeom.mjGEOM_PLANE,
                             size=[0, 0, 0.05], rgba=[0.25, 0.26, 0.30, 1])
@@ -176,18 +274,14 @@ def build(args):
                                      quat=[np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)])
         spec.attach(arm, prefix=f"{side}_", frame=f)
 
+    if hull_parts:
+        add_gripper_collision_hulls(spec, [s[0] for s in sides], mesh_out, hull_parts)
+
     add_actuators(spec, [s[0] for s in sides])
     set_joint_torque_limits(spec, [s[0] for s in sides])
     model = spec.compile()
-    xml = sanitize_xml(spec.to_xml())
+    xml = sanitize_xml(spec.to_xml(), mesh_out)
 
-    out = args.out
-    mesh_out = os.path.join(out, "meshes")
-    os.makedirs(mesh_out, exist_ok=True)
-    for src in (os.path.join(root, "arm/yam/assets"),
-                os.path.join(root, "gripper/linear_4310/assets")):
-        for fn in os.listdir(src):
-            shutil.copy(os.path.join(src, fn), os.path.join(mesh_out, fn))
     xml_path = os.path.join(out, "bimanual_yam.xml")
     with open(xml_path, "w") as f:
         f.write(xml)
