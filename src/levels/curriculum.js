@@ -146,10 +146,21 @@ export const CURRICULUM = [
     reset(ctx) {
       const r = ctx.rng;
       ctx.state.holdT = 0;
-      const yaw = (r() - 0.5) * 1.4;
-      const pitch = (r() - 0.5) * 1.0;
+      // Range picked by actually running the arm's IK solver (not just an
+      // angle heuristic) against thousands of sampled targets: the previous
+      // range -- yaw +-0.7, pitch +-0.5, position +-0.08, height 12-28 cm
+      // above the table -- put ~20% of episodes outside what left_grasp_site
+      // can reach, even composed around the correct rest orientation (see
+      // LEFT_GRASP_REST_QUAT above). Position mattered as much as
+      // orientation: low height (close to the 12 cm floor) alone was
+      // unreachable at some x/y even with zero tilt. This narrower range
+      // (yaw +-0.25, pitch +-0.15, position +-0.05, height 18-30 cm) measured
+      // <0.5% unreachable across 5 seeds x 80 episodes -- tighten further
+      // before widening it back up.
+      const yaw = (r() - 0.5) * 0.5;
+      const pitch = (r() - 0.5) * 0.3;
       ctx.setBodyPose('target_frame',
-        [L.x + (r() - 0.5) * 0.16, L.y + (r() - 0.5) * 0.16, TABLE_Z + 0.12 + r() * 0.16],
+        [L.x + (r() - 0.5) * 0.10, L.y + (r() - 0.5) * 0.10, TABLE_Z + 0.18 + r() * 0.12],
         quatMul(LEFT_GRASP_REST_QUAT, eulerToQuat(0, pitch, yaw)));
     },
     tick(ctx, dt) {
@@ -266,21 +277,27 @@ export const CURRICULUM = [
     ${freeBody('ball', '<geom type="sphere" size="0.022" rgba="0.9 0.4 0.6 1" mass="0.05" '
       + 'friction="0.6 0.01 0.001" condim="4"/>',
       [(L.x + R.x) / 2, 0, TABLE_Z + 0.06])}
+    <geom type="box" size="0.07 0.20 0.004" pos="${(L.x + R.x) / 2} 0 ${TABLE_Z + 0.30}"
+          rgba="0.2 0.8 1 0.3" contype="0" conaffinity="0"/>
     <site name="goal_shelf" pos="${(L.x + R.x) / 2} 0 ${TABLE_Z + 0.30}"
-          size="0.10 0.06 0.004" type="box" rgba="0.2 0.8 1 0.3"/>`,
+          size="0.07 0.20 0.004" type="box" rgba="0 0 0 0"/>`,
     }),
     reset(ctx) {
       const r = ctx.rng;
       const cx = (L.x + R.x) / 2 + (r() - 0.5) * 0.06;
-      placeFree(ctx.sim, 'tray', [cx, (r() - 0.5) * 0.05, TABLE_Z + 0.03]);
-      placeFree(ctx.sim, 'ball', [cx, 0, TABLE_Z + 0.08]);
+      const cy = (r() - 0.5) * 0.05;
+      // Tray's long axis is local X; rotate 90 deg about Z so the grasp ends
+      // line up with the left/right arms (which sit side-by-side along Y),
+      // instead of pointing one end at the base and one away from it.
+      placeFree(ctx.sim, 'tray', [cx, cy, TABLE_Z + 0.03], [0.7071068, 0, 0, 0.7071068]);
+      placeFree(ctx.sim, 'ball', [cx, cy, TABLE_Z + 0.08]);
       ctx.state.holdT = 0;
     },
     tick(ctx, dt) {
       const tray = ctx.sim.bodyPose('tray');
       const ball = ctx.sim.bodyPose('ball').pos;
       const goal = ctx.sim.sitePose('goal_shelf').pos;
-      const tilt = quatAngle(tray.quat, [1, 0, 0, 0]);
+      const tilt = quatAngle(tray.quat, [0.7071068, 0, 0, 0.7071068]);
       const up = tray.pos[2] > goal[2] - 0.04;
       const ballOn = ball[2] > tray.pos[2] && dist(ball, tray.pos) < 0.14;
       ctx.state.holdT = (up && ballOn && tilt < 0.35) ? ctx.state.holdT + dt : 0;
