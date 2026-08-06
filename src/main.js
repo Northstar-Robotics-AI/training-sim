@@ -252,6 +252,7 @@ class App {
         sim.data.qpos[sim.model.jnt_qposadr[sim.id('joint', name)]] = v;
       },
       getJoint: (name) => sim.data.qpos[sim.model.jnt_qposadr[sim.id('joint', name)]],
+      setGeomOpacity: (name, opacity) => this.gfx.setOpacity(sim.id('geom', name), opacity),
     };
     // Not 'running' while the level's reset() runs -- some levels call
     // setBodyPose from here, which throws if it thinks it's mid-episode.

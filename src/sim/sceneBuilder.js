@@ -148,5 +148,18 @@ export function buildSceneGraph(sim, { hiddenGroups = [3] } = {}) {
     }
   }
 
-  return { root, sync, setGroupVisible, entries };
+  const byGeomId = new Map(entries.map((e) => [e.geomId, e]));
+
+  // Levels use this to signal per-target state (e.g. "already touched")
+  // without recompiling the model -- opacity is a material property, so it's
+  // cheap to flip every frame from tick().
+  function setOpacity(geomId, opacity) {
+    const entry = byGeomId.get(geomId);
+    if (!entry) return;
+    const material = entry.holder.children[0].material;
+    material.opacity = opacity;
+    material.transparent = opacity < 1;
+  }
+
+  return { root, sync, setGroupVisible, setOpacity, entries };
 }

@@ -80,17 +80,23 @@ export const CURRICULUM = [
         const dx = [-0.12, 0.0, 0.14][i % 3];
         const dz = [0.06, 0.22, 0.34][i % 3];
         const pos = `${side.x + dx} ${side.y} ${TABLE_Z + dz}`;
-        return `    <site name="wp${i}" pos="${pos}" size="0.035" rgba="0.2 0.8 1 0.55"/>
-    <geom type="sphere" pos="${pos}" size="0.035" rgba="0.2 0.8 1 0.55"
+        return `    <site name="wp${i}" pos="${pos}" size="0.035" rgba="0.2 0.8 1 0.8"/>
+    <geom name="wp${i}_vis" type="sphere" pos="${pos}" size="0.035" rgba="0.2 0.8 1 0.8"
           contype="0" conaffinity="0"/>`;
       }).join('\n'),
     }),
-    reset(ctx) { ctx.state.hit = new Set(); },
+    reset(ctx) {
+      ctx.state.hit = new Set();
+      for (let i = 0; i < 6; i++) ctx.setGeomOpacity(`wp${i}_vis`, 0.8);
+    },
     tick(ctx) {
       for (let i = 0; i < 6; i++) {
         const wp = ctx.sim.data.site(`wp${i}`).xpos;
         const side = i < 3 ? 'left' : 'right';
-        if (dist(ctx.eePos[side], wp) < 0.05) ctx.state.hit.add(i);
+        if (!ctx.state.hit.has(i) && dist(ctx.eePos[side], wp) < 0.05) {
+          ctx.state.hit.add(i);
+          ctx.setGeomOpacity(`wp${i}_vis`, 0.15);
+        }
       }
       ctx.progress = ctx.state.hit.size / 6;
     },
@@ -346,18 +352,20 @@ export const CURRICULUM = [
     </body>
     ${freeBody('scoop',
       '<geom type="box" size="0.035 0.025 0.004" rgba="0.4 0.45 0.55 1" mass="0.06"/>'
-      + '<geom type="box" size="0.004 0.025 0.018" pos="-0.035 0 0.018" rgba="0.4 0.45 0.55 1" mass="0.01"/>',
+      + '<geom type="box" size="0.004 0.025 0.018" pos="-0.035 0 0.018" rgba="0.4 0.45 0.55 1" mass="0.01"/>'
+      + '<geom type="box" size="0.035 0.004 0.018" pos="0 0.025 0.018" rgba="0.4 0.45 0.55 1" mass="0.01"/>'
+      + '<geom type="box" size="0.035 0.004 0.018" pos="0 -0.025 0.018" rgba="0.4 0.45 0.55 1" mass="0.01"/>',
       [R.x, R.y, TABLE_Z + 0.03])}
     ${[0, 1, 2].map((i) => freeBody(`bead${i}`,
       `<geom type="sphere" size="0.009" rgba="0.95 0.75 0.2 1" mass="0.005" condim="4"/>`,
-      [R.x - 0.012 + i * 0.012, R.y, TABLE_Z + 0.05])).join('\n')}`,
+      [R.x - 0.02 + i * 0.02, R.y, TABLE_Z + 0.05])).join('\n')}`,
     }),
     reset(ctx) {
       const r = ctx.rng;
       placeFree(ctx.sim, 'cup', [L.x + (r() - 0.5) * 0.1, L.y + (r() - 0.5) * 0.1, TABLE_Z + 0.02]);
       placeFree(ctx.sim, 'scoop', [R.x + (r() - 0.5) * 0.08, R.y, TABLE_Z + 0.03]);
       for (let i = 0; i < 3; i++) {
-        placeFree(ctx.sim, `bead${i}`, [R.x - 0.012 + i * 0.012, R.y, TABLE_Z + 0.05]);
+        placeFree(ctx.sim, `bead${i}`, [R.x - 0.02 + i * 0.02, R.y, TABLE_Z + 0.05]);
       }
       ctx.state.inCup = 0;
     },
