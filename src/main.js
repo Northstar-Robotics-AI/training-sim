@@ -253,6 +253,13 @@ class App {
       },
       getJoint: (name) => sim.data.qpos[sim.model.jnt_qposadr[sim.id('joint', name)]],
     };
+    // Not 'running' while the level's reset() runs -- some levels call
+    // setBodyPose from here, which throws if it thinks it's mid-episode.
+    // Leaving `this.status` at whatever the *previous* episode ended on
+    // (still 'running', if this reset was a manual R-key/Y-button reset
+    // rather than a post-episode one) would make that guard false-positive
+    // and throw inside the render loop, which looks like a freeze.
+    this.status = 'resetting';
     this.level.reset(this.ctx);
     sim.mj.mj_forward(sim.model, sim.data);
 

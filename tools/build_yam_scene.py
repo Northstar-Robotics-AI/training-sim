@@ -94,11 +94,20 @@ def arm_with_gripper(arm_xml, grip_xml):
     return arm
 
 
-def add_collision_proxies(spec, use_proxies):
+def add_collision_proxies(spec, use_proxies, mesh_offsets=None):
     """Demote STL geoms to visual-only and add capsule collision proxies.
     gripper/tip_left/tip_right are demoted too -- their real collision geoms
     are convex-decomposition hulls added later, once both arms exist in the
-    top-level spec (see add_gripper_collision_hulls)."""
+    top-level spec (see add_gripper_collision_hulls).
+
+    mesh_offsets, if given, records each MESH_COLLISION body's visual geom
+    pos/quat (keyed by base name). The STL vertices for gripper/tip_left/
+    tip_right are not authored with their origin at the body frame -- the
+    original <geom pos=... quat=...> is what places the mesh correctly, and
+    the CoACD hulls (decomposed straight from those same raw STL vertices,
+    see decompose_collision_mesh) need that exact same placement or they land
+    with zero offset relative to the body: right shape, wrong spot.
+    """
     if not use_proxies:
         return
     for body in spec.bodies:
@@ -113,6 +122,8 @@ def add_collision_proxies(spec, use_proxies):
                 break
         for g in body.geoms:
             if g.type == mujoco.mjtGeom.mjGEOM_MESH:
+                if mesh_offsets is not None and base in MESH_COLLISION and base not in mesh_offsets:
+                    mesh_offsets[base] = (np.array(g.pos), np.array(g.quat))
                 g.contype, g.conaffinity = 0, 0
                 g.group = 2
         if base in PROXY:
@@ -125,11 +136,18 @@ def add_collision_proxies(spec, use_proxies):
             c.density = 0.0
 
 
-def add_gripper_collision_hulls(spec, sides, mesh_out, hull_parts):
+def add_gripper_collision_hulls(spec, sides, mesh_out, hull_parts, mesh_offsets):
     """Add the CoACD collision hulls (see decompose_collision_mesh) to both
     arms' gripper/tip_left/tip_right bodies. Runs on the fully-assembled
     top-level spec (bodies named e.g. "left_gripper") so each mesh asset is
-    written once and shared by both arms, same as the visual STLs."""
+    written once and shared by both arms, same as the visual STLs.
+
+    Each hull geom gets the same pos/quat as the body's original visual mesh
+    geom (mesh_offsets, from add_collision_proxies) -- the hulls are
+    decomposed from that mesh's raw STL vertices, in that mesh's local frame,
+    not the body frame, so without this they render at the right shape but
+    the wrong place (this bit the wrist/gripper hardest since that's where
+    the offset is largest)."""
     for base, parts in hull_parts.items():
         for i, (verts, faces) in enumerate(parts):
             name = f"{base}_col{i}"
@@ -139,10 +157,12 @@ def add_gripper_collision_hulls(spec, sides, mesh_out, hull_parts):
     for side in sides:
         for base, parts in hull_parts.items():
             body = spec.body(f"{side}_{base}")
+            pos, quat = mesh_offsets[base]
             for i in range(len(parts)):
                 g = body.add_geom(name=f"{side}_{base}_col{i}",
                                   type=mujoco.mjtGeom.mjGEOM_MESH,
                                   meshname=f"{base}_col{i}",
+                                  pos=pos, quat=quat,
                                   rgba=[0, 1, 0, 0.25], group=3,
                                   condim=3, mass=0.0)
                 g.density = 0.0
@@ -201,8 +221,10 @@ def sanitize_xml(xml, mesh_out):
     # 0. meshdir was set to mesh_out's absolute path so the collision hulls
     # (written straight into mesh_out, see add_gripper_collision_hulls) would
     # resolve at compile time; the shipped XML needs the portable relative
-    # form the browser's meshdir="meshes/" fetch convention expects.
-    xml = xml.replace(f'meshdir="{mesh_out}"', 'meshdir="meshes/"')
+    # form the browser's meshdir="meshes/" fetch convention expects. Matched
+    # by regex, not an exact string, because to_xml() appends its own "/"
+    # (and on Windows mesh_out itself is backslash-separated).
+    xml = re.sub(r'meshdir="[^"]*"', 'meshdir="meshes/"', xml)
     # 1. attach() writes <default class="X"><default class="X"/></default>
     xml = re.sub(r'<default class="([^"]+)">\s*<default class="\1"\s*/>\s*</default>',
                  r'<default class="\1"/>', xml)
@@ -266,16 +288,17 @@ def build(args):
                    size=[0.35, 0.6, 0.02], pos=[0, 0, 0.72],
                    rgba=[0.55, 0.45, 0.35, 1])
 
+    mesh_offsets = {}
     sides = (("left", 0.25, -0.30), ("right", -0.25, 0.30))
     for side, y, yaw in sides:
         arm = arm_with_gripper(arm_xml, grip_xml)
-        add_collision_proxies(arm, args.collision_proxies)
+        add_collision_proxies(arm, args.collision_proxies, mesh_offsets)
         f = spec.worldbody.add_frame(pos=[-0.05, y, 0.74],
                                      quat=[np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)])
         spec.attach(arm, prefix=f"{side}_", frame=f)
 
     if hull_parts:
-        add_gripper_collision_hulls(spec, [s[0] for s in sides], mesh_out, hull_parts)
+        add_gripper_collision_hulls(spec, [s[0] for s in sides], mesh_out, hull_parts, mesh_offsets)
 
     add_actuators(spec, [s[0] for s in sides])
     set_joint_torque_limits(spec, [s[0] for s in sides])

@@ -16,6 +16,16 @@ const TABLE_Z = 0.74;      // table top surface, world Z
 const L = { x: 0.30, y: 0.22 };   // nominal left workspace centre
 const R = { x: 0.30, y: -0.22 };
 
+// left_grasp_site's orientation at REST_Q (main.js), i.e. what the gripper
+// is actually pointing when an episode starts -- measured via FK, a clean
+// 90 deg rotation about Y. L1's reset() perturbs yaw/pitch around *this*,
+// not around world identity: identity is ~90 deg away from anything the arm
+// can reach, so targets built as raw eulerToQuat(0, pitch, yaw) from
+// identity landed 90-120+ deg off rest and were routinely unreachable (the
+// ghost gripper made this obvious -- it rendered backwards, since matching
+// it would have required an impossible wrist twist).
+const LEFT_GRASP_REST_QUAT = [0.70710678, 0, 0.70710678, 0];
+
 const freeBody = (name, geom, pos) => `
     <body name="${name}" pos="${pos.join(' ')}">
       <freejoint name="${name}_free"/>
@@ -39,12 +49,17 @@ export const CURRICULUM = [
     gate: { window: 1, needed: 1 },
     hint: 'Hold GRIP to move. Release, recenter your hand, grip again to ratchet further.',
     props: () => ({
+      // Paired geom per site, same reason as L1's target_frame: sceneBuilder
+      // only renders <geom>, so a bare <site> is invisible even though its
+      // pose is exactly what tick() below reads.
       worldbody: [0, 1, 2, 3, 4, 5].map((i) => {
         const side = i < 3 ? L : R;
         const dx = [-0.12, 0.0, 0.14][i % 3];
         const dz = [0.06, 0.22, 0.34][i % 3];
-        return `    <site name="wp${i}" pos="${side.x + dx} ${side.y} ${TABLE_Z + dz}"
-             size="0.035" rgba="0.2 0.8 1 0.55"/>`;
+        const pos = `${side.x + dx} ${side.y} ${TABLE_Z + dz}`;
+        return `    <site name="wp${i}" pos="${pos}" size="0.035" rgba="0.2 0.8 1 0.55"/>
+    <geom type="sphere" pos="${pos}" size="0.035" rgba="0.2 0.8 1 0.55"
+          contype="0" conaffinity="0"/>`;
       }).join('\n'),
     }),
     reset(ctx) { ctx.state.hit = new Set(); },
@@ -66,13 +81,37 @@ export const CURRICULUM = [
     timeLimit: 45,
     gate: { window: 5, needed: 4 },
     qualityGate: { 'jerkIntegral.left': 900 },
-    hint: 'Both the position AND the tilt of the gripper must match. Hold it for one second.',
+    hint: 'Move your gripper into the ghost gripper. Position AND tilt must match. Hold it for one second.',
     props: () => ({
+      // A translucent ghost of the *actual* gripper mesh (body + both
+      // fingertips), not an abstract marker -- a thin box gave no sense of
+      // scale or which way the jaw opens. The three geoms below reuse the
+      // real gripper/tip_left/tip_right meshes (already in <asset> for the
+      // arms themselves), placed so the ghost exactly overlaps the real
+      // gripper once target_site's pose matches left_grasp_site's.
+      //
+      // The pos/quat below are NOT the raw world-relative offset -- MuJoCo
+      // composes a mesh geom's declared pos/quat with the mesh asset's own
+      // internal reference frame (its centering offset from STL loading) to
+      // get the geom's actual compiled transform. Reusing the same offset
+      // that FK reports for the real gripper parts (relative to
+      // left_grasp_site) as a naive pos/quat here double-applies that
+      // per-mesh offset and misplaces the ghost by several cm. The values
+      // here already have that composition solved out (worked out once via
+      // FK at the gripper's rest-open state, verified against the real
+      // meshes' compiled geom_pos/geom_quat until the two overlapped to
+      // float noise) so they land correctly; don't hand-derive replacements
+      // from the site offsets alone.
+      // contype/conaffinity 0: visual only, must not collide or get grasped.
       worldbody: `
     <body name="target_frame" pos="${L.x} ${L.y} ${TABLE_Z + 0.18}">
-      <site name="target_site" size="0.012 0.012 0.06" type="box" rgba="1 0.55 0.1 0.8"/>
-      <site name="target_axis" size="0.006 0.006 0.05" type="box"
-            pos="0 0 0.06" rgba="0.1 1 0.4 0.9"/>
+      <site name="target_site" size="0.006" rgba="0 0 0 0"/>
+      <geom type="mesh" mesh="gripper" rgba="1 0.55 0.1 0.5" contype="0" conaffinity="0"
+            pos="-0.0140000 0.0463995 -0.2078000" quat="0 1 0 0"/>
+      <geom type="mesh" mesh="tip_left" rgba="1 0.55 0.1 0.5" contype="0" conaffinity="0"
+            pos="-0.0139060 0.0938995 -0.2099231" quat="0 1 0 0"/>
+      <geom type="mesh" mesh="tip_right" rgba="1 0.55 0.1 0.5" contype="0" conaffinity="0"
+            pos="-0.0140951 -0.0011001 -0.2099231" quat="0 1 0 0"/>
     </body>`,
     }),
     reset(ctx) {
@@ -82,7 +121,7 @@ export const CURRICULUM = [
       const pitch = (r() - 0.5) * 1.0;
       ctx.setBodyPose('target_frame',
         [L.x + (r() - 0.5) * 0.16, L.y + (r() - 0.5) * 0.16, TABLE_Z + 0.12 + r() * 0.16],
-        eulerToQuat(0, pitch, yaw));
+        quatMul(LEFT_GRASP_REST_QUAT, eulerToQuat(0, pitch, yaw)));
     },
     tick(ctx, dt) {
       const t = ctx.sim.sitePose('target_site');
@@ -238,11 +277,11 @@ export const CURRICULUM = [
         + 'friction="0.9 0.02 0.001" condim="4" solref="0.006 1"/>',
         [L.x, L.y, TABLE_Z + 0.05])}
     <body name="socket" pos="${R.x} ${R.y} ${TABLE_Z}">
-      <geom type="box" size="0.05 0.05 0.03" pos="0 0 0.03" rgba="0.35 0.38 0.45 1"/>
-      <geom type="cylinder" size="0.008 0.03" pos="0.023 0 0.061" rgba="0.3 0.32 0.4 1"/>
-      <geom type="cylinder" size="0.008 0.03" pos="-0.023 0 0.061" rgba="0.3 0.32 0.4 1"/>
-      <geom type="cylinder" size="0.008 0.03" pos="0 0.023 0.061" rgba="0.3 0.32 0.4 1"/>
-      <geom type="cylinder" size="0.008 0.03" pos="0 -0.023 0.061" rgba="0.3 0.32 0.4 1"/>
+      <geom type="box" size="0.05 0.05 0.005" pos="0 0 0.005" rgba="0.35 0.38 0.45 1"/>
+      <geom type="cylinder" size="0.008 0.03" pos="0.023 0 0.04" rgba="0.3 0.32 0.4 1"/>
+      <geom type="cylinder" size="0.008 0.03" pos="-0.023 0 0.04" rgba="0.3 0.32 0.4 1"/>
+      <geom type="cylinder" size="0.008 0.03" pos="0 0.023 0.04" rgba="0.3 0.32 0.4 1"/>
+      <geom type="cylinder" size="0.008 0.03" pos="0 -0.023 0.04" rgba="0.3 0.32 0.4 1"/>
       <site name="hole_site" pos="0 0 0.035" size="0.008" rgba="0.1 0.9 0.4 0.5"/>
     </body>`,
     }),
@@ -389,6 +428,16 @@ function eulerToQuat(roll, pitch, yaw) {
     sr * cp * cy - cr * sp * sy,
     cr * sp * cy + sr * cp * sy,
     cr * cp * sy - sr * sp * cy,
+  ];
+}
+
+/** Hamilton product a*b: applies b as a perturbation local to a's frame. */
+function quatMul(a, b) {
+  return [
+    a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+    a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+    a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+    a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0],
   ];
 }
 

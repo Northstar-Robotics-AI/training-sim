@@ -26,14 +26,6 @@
     <mesh name="tip_left_col5" file="tip_left_col5.stl"/>
     <mesh name="tip_left_col6" file="tip_left_col6.stl"/>
     <mesh name="tip_left_col7" file="tip_left_col7.stl"/>
-    <mesh name="gripper_col0" file="gripper_col0.stl"/>
-    <mesh name="gripper_col1" file="gripper_col1.stl"/>
-    <mesh name="gripper_col2" file="gripper_col2.stl"/>
-    <mesh name="gripper_col3" file="gripper_col3.stl"/>
-    <mesh name="gripper_col4" file="gripper_col4.stl"/>
-    <mesh name="gripper_col5" file="gripper_col5.stl"/>
-    <mesh name="gripper_col6" file="gripper_col6.stl"/>
-    <mesh name="gripper_col7" file="gripper_col7.stl"/>
     <mesh name="tip_right_col0" file="tip_right_col0.stl"/>
     <mesh name="tip_right_col1" file="tip_right_col1.stl"/>
     <mesh name="tip_right_col2" file="tip_right_col2.stl"/>
@@ -42,6 +34,14 @@
     <mesh name="tip_right_col5" file="tip_right_col5.stl"/>
     <mesh name="tip_right_col6" file="tip_right_col6.stl"/>
     <mesh name="tip_right_col7" file="tip_right_col7.stl"/>
+    <mesh name="gripper_col0" file="gripper_col0.stl"/>
+    <mesh name="gripper_col1" file="gripper_col1.stl"/>
+    <mesh name="gripper_col2" file="gripper_col2.stl"/>
+    <mesh name="gripper_col3" file="gripper_col3.stl"/>
+    <mesh name="gripper_col4" file="gripper_col4.stl"/>
+    <mesh name="gripper_col5" file="gripper_col5.stl"/>
+    <mesh name="gripper_col6" file="gripper_col6.stl"/>
+    <mesh name="gripper_col7" file="gripper_col7.stl"/>
   </asset>
 
   <worldbody>
@@ -54,6 +54,7 @@
       <inertial pos="-3.83909e-05 2.40069e-05 0.0247678" quat="0.499381 0.50074 -0.500087 -0.499791" mass="0.873654" diaginertia="0.000678306 0.00157059 0.00169404"/>
       <geom pos="0.0374957 0.0464006 0.187501" quat="-1.29867e-06 -0.707108 -1.29868e-06 0.707105" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.317647 0.121569 0.498039 1" mesh="base"/>
       <body name="left_link1" pos="-2.49778e-07 0 0.068" quat="-1.29867e-06 -0.707108 -1.29868e-06 0.707105">
+        <inertial pos="-0.0233636 -0.00172503 -0.00727828" quat="0.645244 0.212043 -0.196813 -0.707081" mass="0.101218" diaginertia="4.71815e-05 0.000106251 0.000134913"/>
         <joint name="left_joint1" pos="0 0 0" axis="-1 0 0" range="-2.61799 3.14159" actuatorfrcrange="-27 27"/>
         <geom pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.72549 0.45098 0.317647 1" mesh="link1"/>
         <geom name="left_link1_col" size="0.055 0.04" pos="-0.02 0 0" quat="0.707107 0 -0.707107 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
@@ -83,41 +84,41 @@
                   <body name="left_gripper">
                     <inertial pos="-3.57066e-05 0.000249371 -0.0293133" quat="0.667981 0.744113 -0.00433092 0.00882801" mass="0.553219" diaginertia="0.000409686 0.000369758 0.000324415"/>
                     <geom pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.109804 0.286275 0.0117647 1" mesh="gripper"/>
-                    <geom name="left_gripper_col0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col0"/>
-                    <geom name="left_gripper_col1" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col1"/>
-                    <geom name="left_gripper_col2" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col2"/>
-                    <geom name="left_gripper_col3" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col3"/>
-                    <geom name="left_gripper_col4" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col4"/>
-                    <geom name="left_gripper_col5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col5"/>
-                    <geom name="left_gripper_col6" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col6"/>
-                    <geom name="left_gripper_col7" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col7"/>
+                    <geom name="left_gripper_col0" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col0"/>
+                    <geom name="left_gripper_col1" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col1"/>
+                    <geom name="left_gripper_col2" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col2"/>
+                    <geom name="left_gripper_col3" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col3"/>
+                    <geom name="left_gripper_col4" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col4"/>
+                    <geom name="left_gripper_col5" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col5"/>
+                    <geom name="left_gripper_col6" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col6"/>
+                    <geom name="left_gripper_col7" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col7"/>
                     <site name="left_tcp_site" pos="0 0 0" quat="0 1 0 0" rgba="1 0 0 1"/>
                     <site name="left_grasp_site" pos="0 0 -0.1347" quat="0 1 0 0" rgba="0 1 0 1"/>
                     <body name="left_tip_left" pos="-0.0238981 0.0450619 -0.0545599" quat="0.499998 -0.5 -0.5 -0.500002">
                       <inertial pos="-0.0224716 0.0143408 -0.0426253" quat="0.498899 0.455348 -0.0576406 0.735143" mass="0.0710042" diaginertia="6.24193e-05 6.01079e-05 2.83591e-05"/>
                       <joint name="left_joint7" pos="0 0 0" axis="0 0 -1" type="slide" range="0 0.0475"/>
                       <geom pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.596078 0.788235 0.921569 1" mesh="tip_left"/>
-                      <geom name="left_tip_left_col0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col0"/>
-                      <geom name="left_tip_left_col1" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col1"/>
-                      <geom name="left_tip_left_col2" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col2"/>
-                      <geom name="left_tip_left_col3" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col3"/>
-                      <geom name="left_tip_left_col4" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col4"/>
-                      <geom name="left_tip_left_col5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col5"/>
-                      <geom name="left_tip_left_col6" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col6"/>
-                      <geom name="left_tip_left_col7" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col7"/>
+                      <geom name="left_tip_left_col0" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col0"/>
+                      <geom name="left_tip_left_col1" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col1"/>
+                      <geom name="left_tip_left_col2" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col2"/>
+                      <geom name="left_tip_left_col3" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col3"/>
+                      <geom name="left_tip_left_col4" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col4"/>
+                      <geom name="left_tip_left_col5" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col5"/>
+                      <geom name="left_tip_left_col6" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col6"/>
+                      <geom name="left_tip_left_col7" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col7"/>
                     </body>
                     <body name="left_tip_right" pos="0.0238981 -0.0450619 -0.0545599" quat="0.707105 0.707108 0 0">
                       <inertial pos="-0.0143408 -0.0224716 -0.0426253" quat="0.281222 0.8726 0.16705 -0.362738" mass="0.0710042" diaginertia="6.24193e-05 6.01079e-05 2.83591e-05"/>
                       <joint name="left_joint8" pos="0 0 0" axis="0 0 -1" type="slide" range="0 0.0475"/>
                       <geom pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.596078 0.788235 0.921569 1" mesh="tip_right"/>
-                      <geom name="left_tip_right_col0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col0"/>
-                      <geom name="left_tip_right_col1" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col1"/>
-                      <geom name="left_tip_right_col2" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col2"/>
-                      <geom name="left_tip_right_col3" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col3"/>
-                      <geom name="left_tip_right_col4" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col4"/>
-                      <geom name="left_tip_right_col5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col5"/>
-                      <geom name="left_tip_right_col6" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col6"/>
-                      <geom name="left_tip_right_col7" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col7"/>
+                      <geom name="left_tip_right_col0" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col0"/>
+                      <geom name="left_tip_right_col1" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col1"/>
+                      <geom name="left_tip_right_col2" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col2"/>
+                      <geom name="left_tip_right_col3" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col3"/>
+                      <geom name="left_tip_right_col4" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col4"/>
+                      <geom name="left_tip_right_col5" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col5"/>
+                      <geom name="left_tip_right_col6" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col6"/>
+                      <geom name="left_tip_right_col7" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col7"/>
                     </body>
                   </body>
                 </body>
@@ -161,42 +162,41 @@
                   <body name="right_gripper">
                     <inertial pos="-3.57066e-05 0.000249371 -0.0293133" quat="0.667981 0.744113 -0.00433092 0.00882801" mass="0.553219" diaginertia="0.000409686 0.000369758 0.000324415"/>
                     <geom pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.109804 0.286275 0.0117647 1" mesh="gripper"/>
-                    <geom name="right_gripper_col0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col0"/>
-                    <geom name="right_gripper_col1" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col1"/>
-                    <geom name="right_gripper_col2" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col2"/>
-                    <geom name="right_gripper_col3" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col3"/>
-                    <geom name="right_gripper_col4" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col4"/>
-                    <geom name="right_gripper_col5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col5"/>
-                    <geom name="right_gripper_col6" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col6"/>
-                    <geom name="right_gripper_col7" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col7"/>
+                    <geom name="right_gripper_col0" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col0"/>
+                    <geom name="right_gripper_col1" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col1"/>
+                    <geom name="right_gripper_col2" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col2"/>
+                    <geom name="right_gripper_col3" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col3"/>
+                    <geom name="right_gripper_col4" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col4"/>
+                    <geom name="right_gripper_col5" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col5"/>
+                    <geom name="right_gripper_col6" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col6"/>
+                    <geom name="right_gripper_col7" pos="-0.014 -0.0463995 0.0731" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="gripper_col7"/>
                     <site name="right_tcp_site" pos="0 0 0" quat="0 1 0 0" rgba="1 0 0 1"/>
                     <site name="right_grasp_site" pos="0 0 -0.1347" quat="0 1 0 0" rgba="0 1 0 1"/>
                     <body name="right_tip_left" pos="-0.0238981 0.0450619 -0.0545599" quat="0.499998 -0.5 -0.5 -0.500002">
                       <inertial pos="-0.0224716 0.0143408 -0.0426253" quat="0.498899 0.455348 -0.0576406 0.735143" mass="0.0710042" diaginertia="6.24193e-05 6.01079e-05 2.83591e-05"/>
                       <joint name="right_joint7" pos="0 0 0" axis="0 0 -1" type="slide" range="0 0.0475"/>
                       <geom pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.596078 0.788235 0.921569 1" mesh="tip_left"/>
-                      <geom name="right_tip_left_col0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col0"/>
-                      <geom name="right_tip_left_col1" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col1"/>
-                      <geom name="right_tip_left_col2" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col2"/>
-                      <geom name="right_tip_left_col3" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col3"/>
-                      <geom name="right_tip_left_col4" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col4"/>
-                      <geom name="right_tip_left_col5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col5"/>
-                      <geom name="right_tip_left_col6" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col6"/>
-                      <geom name="right_tip_left_col7" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col7"/>
+                      <geom name="right_tip_left_col0" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col0"/>
+                      <geom name="right_tip_left_col1" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col1"/>
+                      <geom name="right_tip_left_col2" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col2"/>
+                      <geom name="right_tip_left_col3" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col3"/>
+                      <geom name="right_tip_left_col4" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col4"/>
+                      <geom name="right_tip_left_col5" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col5"/>
+                      <geom name="right_tip_left_col6" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col6"/>
+                      <geom name="right_tip_left_col7" pos="0.129783 0.00999321 -0.0914614" quat="0.499998 0.5 0.500002 0.5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_left_col7"/>
                     </body>
                     <body name="right_tip_right" pos="0.0238981 -0.0450619 -0.0545599" quat="0.707105 0.707108 0 0">
                       <inertial pos="-0.0143408 -0.0224716 -0.0426253" quat="0.281222 0.8726 0.16705 -0.362738" mass="0.0710042" diaginertia="6.24193e-05 6.01079e-05 2.83591e-05"/>
                       <joint name="right_joint8" pos="0 0 0" axis="0 0 -1" type="slide" range="0 0.0475"/>
                       <geom pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.596078 0.788235 0.921569 1" mesh="tip_right"/>
-                      <geom name="right_tip_right_col0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col0"/>
-                      <geom name="right_tip_right_col1" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col1"/>
-                      <geom name="right_tip_right_col2" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col2"/>
-                      <geom name="right_tip_right_col3" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col3"/>
-                      <geom name="right_tip_right_col4" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col4"/>
-                      <geom name="right_tip_right_col5" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col5"/>
-                      <geom name="right_tip_right_col6" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col6"/>
-                      <geom name="right_tip_right_col7" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col7"/>
-7 0 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+                      <geom name="right_tip_right_col0" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col0"/>
+                      <geom name="right_tip_right_col1" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col1"/>
+                      <geom name="right_tip_right_col2" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col2"/>
+                      <geom name="right_tip_right_col3" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col3"/>
+                      <geom name="right_tip_right_col4" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col4"/>
+                      <geom name="right_tip_right_col5" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col5"/>
+                      <geom name="right_tip_right_col6" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col6"/>
+                      <geom name="right_tip_right_col7" pos="-0.0379932 0.129783 0.00133753" quat="0.707105 -0.707108 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="tip_right_col7"/>
                     </body>
                   </body>
                 </body>
@@ -249,3 +249,5 @@
     <general name="right_gcomp4" joint="right_joint4"/>
     <general name="right_gcomp5" joint="right_joint5"/>
     <general name="right_gcomp6" joint="right_joint6"/>
+  </actuator>
+</mujoco>
