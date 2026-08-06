@@ -127,7 +127,7 @@ export function makeSampler(sim, arms, xrInput, level) {
         pos: [s.pos.x, s.pos.y, s.pos.z],
         quat: [s.quat.x, s.quat.y, s.quat.z, s.quat.w],
         trigger: s.trigger,
-        clutch: s.clutch,
+        frozen: s.frozen,
       };
     }
 

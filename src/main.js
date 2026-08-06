@@ -321,20 +321,20 @@ class App {
       const rt = retarget[side];
 
       // No controller data: hold still. Gravity comp still needs to run --
-      // see the holdGravity() call below the clutch handling for why this
+      // see the holdGravity() call below the freeze handling for why this
       // can't just be ik.step() with the site's own current pose as target.
       if (!s.valid) { ik.holdGravity(); continue; }
 
-      const clutchEdge = this.xr.consumeClutchEdge(side);
-      if (clutchEdge === 'down') {
+      const freezeEdge = this.xr.consumeFreezeEdge(side);
+      if (freezeEdge === 'unfreeze') {
         ik.syncToCurrent();
         rt.engage(xrPosToMj(s.pos), xrQuatToMj(sim.mj, s.quat), sim.sitePose(`${side}_grasp_site`));
         this.xr.pulse(side, 0.3, 25);
         this.metrics.clutchCount[side]++;
-        this.recorder.event('clutch_down', { side });
-      } else if (clutchEdge === 'up') {
+        this.recorder.event('unfreeze', { side });
+      } else if (freezeEdge === 'freeze') {
         rt.release();
-        this.recorder.event('clutch_up', { side });
+        this.recorder.event('freeze', { side });
       }
 
       const target = rt.target(xrPosToMj(s.pos), xrQuatToMj(sim.mj, s.quat));
@@ -348,11 +348,11 @@ class App {
         // so buzzing on that would vibrate continuously and mean nothing.
         if (r.leashed) this.xr.pulse(side, 0.15, 15);
       } else {
-        // Declutched: hold the last commanded qTarget (still being applied to
+        // Frozen: hold the last commanded qTarget (still being applied to
         // the position actuators every tick regardless) but keep the gravity
         // feedforward fresh. Must not be ik.step() here -- see holdGravity()'s
         // docstring for the 227 mm drift that produces over a sustained idle
-        // period, which is exactly what "declutched" is.
+        // period, which is exactly what "frozen" is.
         ik.holdGravity();
       }
       ik.setGripper(1 - s.trigger);
@@ -365,30 +365,32 @@ class App {
     const dt = Math.min(now - (this._last ?? now), 0.1);
     this._last = now;
 
-    this.xr.update(xrFrame, this.renderer.xr.getReferenceSpace());
+    this.xr.update(xrFrame, this.renderer.xr.getReferenceSpace(), dt);
 
-    // Y (left secondary) resets the episode, mirroring the 'r' key -- the only
-    // way out of a wedged attempt without taking the headset off.
+    // Either grip held 2s resets the episode, mirroring the 'r' key -- the
+    // only way out of a wedged attempt without taking the headset off.
     //
     // Consumed here at render rate rather than in control(): that is where the
     // edge is produced, and the fixed-step control loop below can run zero
     // times in a frame whenever the display is faster than the control rate,
     // which would silently drop presses.
-    if (this.xr.state.left.secondaryEdge) {
+    const resetHeld = this.xr.consumeResetEdge('left') | this.xr.consumeResetEdge('right');
+    if (resetHeld) {
       this.xr.pulse('left', 0.4, 40);
+      this.xr.pulse('right', 0.4, 40);
       this.resetEpisode();
     }
 
-    // A/B (right primary/secondary) step the curriculum without leaving the
-    // headset, mirroring the desktop 'n'/'p' keys -- those never reach the
+    // X/A (left/right primary) step the curriculum without leaving the
+    // headset, mirroring the desktop 'p'/'n' keys -- those never reach the
     // page once an immersive session has the headset's focus.
+    if (this.xr.state.left.primaryEdge) {
+      this.xr.pulse('left', 0.4, 40);
+      this.loadLevel(Math.max(this.levelIndex - 1, 0));
+    }
     if (this.xr.state.right.primaryEdge) {
       this.xr.pulse('right', 0.4, 40);
       this.loadLevel(Math.min(this.levelIndex + 1, CURRICULUM.length - 1));
-    }
-    if (this.xr.state.right.secondaryEdge) {
-      this.xr.pulse('right', 0.4, 40);
-      this.loadLevel(Math.max(this.levelIndex - 1, 0));
     }
 
     // Fixed-rate control, independent of render rate.
@@ -422,7 +424,7 @@ class App {
         ? `err=${d.posErr.toFixed(4)} leash=${d.leashed ? 1 : 0}`
           + ` it=${d.iters}${d.converged ? '' : '!'} rej=${this._ikRej[side]}`
         : 'no-ik';
-      return `${side[0].toUpperCase()} c=${s.clutch ? 1 : 0} eng=${rt.engaged ? 1 : 0}`
+      return `${side[0].toUpperCase()} frz=${s.frozen ? 1 : 0} eng=${rt.engaged ? 1 : 0}`
         + ` cnt=${rt.clutchCount} ${ikStr}`;
     };
     this.hud.update({

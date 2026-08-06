@@ -78,12 +78,15 @@ All eight levels compile and step cleanly. L6 is heaviest at nq=51, 14 contacts.
 
 ## Control
 
-Clutched relative retargeting: hold grip, and only the delta since engagement is
-applied on top of the EE pose frozen at engagement. Absolute mapping is
-unusable — the operator's hand and the YAM's wrist have different workspaces, so
-the arm hits a limit the moment the hand leaves the reachable shell. Releasing
-and recentering is how the operator ratchets across a workspace larger than
-their arm span.
+Clutched relative retargeting: Y/B toggle each arm frozen/unfrozen (left/right),
+and while unfrozen only the delta since the toggle is applied on top of the EE
+pose frozen at that moment. Absolute mapping is unusable — the operator's hand
+and the YAM's wrist have different workspaces, so the arm hits a limit the
+moment the hand leaves the reachable shell. Freezing and recentering is how the
+operator ratchets across a workspace larger than their arm span.
+
+Grip, held 2 s on either controller, resets the episode. X/A step to the
+previous/next level.
 
 Per-arm differential IK, damped least squares on the 6×6 site Jacobian, running
 at a fixed 100 Hz independent of render rate.

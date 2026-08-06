@@ -3,10 +3,10 @@
 // Absolute mapping (controller pose -> EE pose directly) is unusable: the
 // operator's hand and the YAM's wrist have different workspaces, and the arm
 // slams into a limit the moment the hand leaves the reachable shell. So this
-// uses the standard clutch: hold the grip button, and only the *delta* since
-// engagement is applied on top of the EE pose frozen at engagement.
+// uses the standard clutch: toggle the arm unfrozen, and only the *delta*
+// since engagement is applied on top of the EE pose frozen at engagement.
 //
-// Releasing and re-centering the hand is how the operator "ratchets" across a
+// Freezing and re-centering the hand is how the operator "ratchets" across a
 // workspace larger than their arm span.
 //
 // This stage also owns input conditioning, and that is not cosmetic. The IK
