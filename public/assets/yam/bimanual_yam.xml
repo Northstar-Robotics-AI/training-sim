@@ -18,22 +18,14 @@
     <mesh name="gripper" file="gripper.stl"/>
     <mesh name="tip_left" file="tip_left.stl"/>
     <mesh name="tip_right" file="tip_right.stl"/>
-    <mesh name="tip_left_col0" file="tip_left_col0.stl"/>
-    <mesh name="tip_left_col1" file="tip_left_col1.stl"/>
-    <mesh name="tip_left_col2" file="tip_left_col2.stl"/>
-    <mesh name="tip_left_col3" file="tip_left_col3.stl"/>
-    <mesh name="tip_left_col4" file="tip_left_col4.stl"/>
-    <mesh name="tip_left_col5" file="tip_left_col5.stl"/>
-    <mesh name="tip_left_col6" file="tip_left_col6.stl"/>
-    <mesh name="tip_left_col7" file="tip_left_col7.stl"/>
-    <mesh name="tip_right_col0" file="tip_right_col0.stl"/>
-    <mesh name="tip_right_col1" file="tip_right_col1.stl"/>
-    <mesh name="tip_right_col2" file="tip_right_col2.stl"/>
-    <mesh name="tip_right_col3" file="tip_right_col3.stl"/>
-    <mesh name="tip_right_col4" file="tip_right_col4.stl"/>
-    <mesh name="tip_right_col5" file="tip_right_col5.stl"/>
-    <mesh name="tip_right_col6" file="tip_right_col6.stl"/>
-    <mesh name="tip_right_col7" file="tip_right_col7.stl"/>
+    <mesh name="link1_col0" file="link1_col0.stl"/>
+    <mesh name="link1_col1" file="link1_col1.stl"/>
+    <mesh name="link1_col2" file="link1_col2.stl"/>
+    <mesh name="link1_col3" file="link1_col3.stl"/>
+    <mesh name="link1_col4" file="link1_col4.stl"/>
+    <mesh name="link1_col5" file="link1_col5.stl"/>
+    <mesh name="link1_col6" file="link1_col6.stl"/>
+    <mesh name="link1_col7" file="link1_col7.stl"/>
     <mesh name="gripper_col0" file="gripper_col0.stl"/>
     <mesh name="gripper_col1" file="gripper_col1.stl"/>
     <mesh name="gripper_col2" file="gripper_col2.stl"/>
@@ -42,6 +34,46 @@
     <mesh name="gripper_col5" file="gripper_col5.stl"/>
     <mesh name="gripper_col6" file="gripper_col6.stl"/>
     <mesh name="gripper_col7" file="gripper_col7.stl"/>
+    <mesh name="tip_right_col0" file="tip_right_col0.stl"/>
+    <mesh name="tip_right_col1" file="tip_right_col1.stl"/>
+    <mesh name="tip_right_col2" file="tip_right_col2.stl"/>
+    <mesh name="tip_right_col3" file="tip_right_col3.stl"/>
+    <mesh name="tip_right_col4" file="tip_right_col4.stl"/>
+    <mesh name="tip_right_col5" file="tip_right_col5.stl"/>
+    <mesh name="tip_right_col6" file="tip_right_col6.stl"/>
+    <mesh name="tip_right_col7" file="tip_right_col7.stl"/>
+    <mesh name="link5_col0" file="link5_col0.stl"/>
+    <mesh name="link5_col1" file="link5_col1.stl"/>
+    <mesh name="link5_col2" file="link5_col2.stl"/>
+    <mesh name="link5_col3" file="link5_col3.stl"/>
+    <mesh name="link5_col4" file="link5_col4.stl"/>
+    <mesh name="link5_col5" file="link5_col5.stl"/>
+    <mesh name="link5_col6" file="link5_col6.stl"/>
+    <mesh name="link5_col7" file="link5_col7.stl"/>
+    <mesh name="link4_col0" file="link4_col0.stl"/>
+    <mesh name="link4_col1" file="link4_col1.stl"/>
+    <mesh name="link4_col2" file="link4_col2.stl"/>
+    <mesh name="link4_col3" file="link4_col3.stl"/>
+    <mesh name="link4_col4" file="link4_col4.stl"/>
+    <mesh name="link4_col5" file="link4_col5.stl"/>
+    <mesh name="link4_col6" file="link4_col6.stl"/>
+    <mesh name="link4_col7" file="link4_col7.stl"/>
+    <mesh name="link3_col0" file="link3_col0.stl"/>
+    <mesh name="link3_col1" file="link3_col1.stl"/>
+    <mesh name="link3_col2" file="link3_col2.stl"/>
+    <mesh name="link3_col3" file="link3_col3.stl"/>
+    <mesh name="link3_col4" file="link3_col4.stl"/>
+    <mesh name="link3_col5" file="link3_col5.stl"/>
+    <mesh name="link3_col6" file="link3_col6.stl"/>
+    <mesh name="link3_col7" file="link3_col7.stl"/>
+    <mesh name="tip_left_col0" file="tip_left_col0.stl"/>
+    <mesh name="tip_left_col1" file="tip_left_col1.stl"/>
+    <mesh name="tip_left_col2" file="tip_left_col2.stl"/>
+    <mesh name="tip_left_col3" file="tip_left_col3.stl"/>
+    <mesh name="tip_left_col4" file="tip_left_col4.stl"/>
+    <mesh name="tip_left_col5" file="tip_left_col5.stl"/>
+    <mesh name="tip_left_col6" file="tip_left_col6.stl"/>
+    <mesh name="tip_left_col7" file="tip_left_col7.stl"/>
   </asset>
 
   <worldbody>
@@ -57,27 +89,55 @@
         <inertial pos="-0.0233636 -0.00172503 -0.00727828" quat="0.645244 0.212043 -0.196813 -0.707081" mass="0.101218" diaginertia="4.71815e-05 0.000106251 0.000134913"/>
         <joint name="left_joint1" pos="0 0 0" axis="-1 0 0" range="-2.61799 3.14159" actuatorfrcrange="-27 27"/>
         <geom pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.72549 0.45098 0.317647 1" mesh="link1"/>
-        <geom name="left_link1_col" size="0.055 0.04" pos="-0.02 0 0" quat="0.707107 0 -0.707107 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+        <geom name="left_link1_col0" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col0"/>
+        <geom name="left_link1_col1" pos="-0.119501 -0.0464 -0.0374968" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col1"/>
+        <geom name="left_link1_col2" pos="-0.119501 -0.0464 -0.0374968" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col2"/>
+        <geom name="left_link1_col3" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col3"/>
+        <geom name="left_link1_col4" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col4"/>
+        <geom name="left_link1_col5" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col5"/>
+        <geom name="left_link1_col6" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col6"/>
+        <geom name="left_link1_col7" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col7"/>
         <body name="left_link2" pos="-0.0455 -0.0339 -0.02" quat="1.32679e-06 0 0 -1">
           <inertial pos="0.000134495 -0.0331253 0.129165" quat="2.33681e-05 -0.707118 0.000136799 -0.707096" mass="1.46908" diaginertia="0.000800088 0.014599 0.0146686"/>
           <joint name="left_joint2" pos="0 0 0" axis="0 1 0" range="0 3.66519" actuatorfrcrange="-27 27"/>
           <geom pos="-0.0740001 -0.08025 -0.0174977" type="mesh" contype="0" conaffinity="0" group="2" rgba="0 0.4 0.6 1" mesh="link2"/>
-          <geom name="left_link2_col" size="0.05 0.12" pos="0 -0.033 0.13" quat="0 1 0 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+          <geom name="left_link2_col" size="0.05 0.11" pos="0 -0.033 0.14" quat="0 1 0 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
           <body name="left_link3" pos="4.08431e-07 -0.0688 0.264" quat="1.32679e-06 0 0 -1">
             <inertial pos="-0.0556042 -0.0340514 -0.135083" quat="0.66731 -0.0848198 0.734174 0.0921503" mass="0.982553" diaginertia="0.000876442 0.0076296 0.00765198"/>
             <joint name="left_joint3" pos="0 0 0" axis="0 1 0" range="0 3.14159" actuatorfrcrange="-27 27"/>
             <geom pos="-0.0740003 -0.0813 -0.281499" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.552941 0.580392 0.203922 1" mesh="link3"/>
-            <geom name="left_link3_col" size="0.045 0.115" pos="-0.055 -0.034 -0.12" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+            <geom name="left_link3_col0" pos="-0.0740003 -0.0813 -0.281499" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col0"/>
+            <geom name="left_link3_col1" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col1"/>
+            <geom name="left_link3_col2" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col2"/>
+            <geom name="left_link3_col3" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col3"/>
+            <geom name="left_link3_col4" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col4"/>
+            <geom name="left_link3_col5" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col5"/>
+            <geom name="left_link3_col6" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col6"/>
+            <geom name="left_link3_col7" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col7"/>
             <body name="left_link4" pos="-0.0600003 -0.0688 -0.244999" quat="1 0 0 0">
               <inertial pos="-0.0550959 0.032726 -0.0575534" quat="0.100607 0.941086 -0.0797556 0.31285" mass="0.462165" diaginertia="0.00028779 0.00076643 0.000787888"/>
               <joint name="left_joint4" pos="0 0 0" axis="0 1 0" range="-1.69297 1.5708" actuatorfrcrange="-10 10"/>
               <geom pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.545098 0.52549 0.419608 1" mesh="link4"/>
-              <geom name="left_link4_col" size="0.042 0.0295" pos="-0.055 0.033 -0.0345" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+              <geom name="left_link4_col0" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col0"/>
+              <geom name="left_link4_col1" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col1"/>
+              <geom name="left_link4_col2" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col2"/>
+              <geom name="left_link4_col3" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col3"/>
+              <geom name="left_link4_col4" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col4"/>
+              <geom name="left_link4_col5" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col5"/>
+              <geom name="left_link4_col6" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col6"/>
+              <geom name="left_link4_col7" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col7"/>
               <body name="left_link5" pos="-0.0405003 0.0338995 -0.0739989" quat="1 0 0 0">
                 <inertial pos="0.0375847 -3.55003e-05 -0.000825911" quat="0.646686 0.642392 0.288656 -0.292929" mass="0.403307" diaginertia="0.000169647 0.000195686 0.000219794"/>
                 <joint name="left_joint5" pos="0 0 0" axis="1 0 0" range="-1.5708 1.5708" actuatorfrcrange="-10 10"/>
                 <geom pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.827451 0.623529 0.784314 1" mesh="link5"/>
-                <geom name="left_link5_col" size="0.04 0.025" pos="0.02 0 -0.015" quat="0.894427 0 -0.447214 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+                <geom name="left_link5_col0" pos="0.0265 -0.0463995 0.0375" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col0"/>
+                <geom name="left_link5_col1" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col1"/>
+                <geom name="left_link5_col2" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col2"/>
+                <geom name="left_link5_col3" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col3"/>
+                <geom name="left_link5_col4" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col4"/>
+                <geom name="left_link5_col5" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col5"/>
+                <geom name="left_link5_col6" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col6"/>
+                <geom name="left_link5_col7" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col7"/>
                 <body name="left_link6" pos="0.0404996 2.39858e-07 -0.0356" quat="1 0 0 0">
                   <inertial pos="0 0 0" mass="1e-06" diaginertia="1e-09 1e-09 1e-09"/>
                   <joint name="left_joint6" pos="0 0 0" axis="0 0 -1" range="-2.0944 2.0944" actuatorfrcrange="-10 10"/>
@@ -135,27 +195,55 @@
         <inertial pos="-0.0233636 -0.00172503 -0.00727828" quat="0.645244 0.212043 -0.196813 -0.707081" mass="0.101218" diaginertia="4.71815e-05 0.000106251 0.000134913"/>
         <joint name="right_joint1" pos="0 0 0" axis="-1 0 0" range="-2.61799 3.14159" actuatorfrcrange="-27 27"/>
         <geom pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.72549 0.45098 0.317647 1" mesh="link1"/>
-        <geom name="right_link1_col" size="0.055 0.04" pos="-0.02 0 0" quat="0.707107 0 -0.707107 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+        <geom name="right_link1_col0" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col0"/>
+        <geom name="right_link1_col1" pos="-0.119501 -0.0464 -0.0374968" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col1"/>
+        <geom name="right_link1_col2" pos="-0.119501 -0.0464 -0.0374968" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col2"/>
+        <geom name="right_link1_col3" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col3"/>
+        <geom name="right_link1_col4" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col4"/>
+        <geom name="right_link1_col5" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col5"/>
+        <geom name="right_link1_col6" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col6"/>
+        <geom name="right_link1_col7" pos="-0.119501 -0.0464 -0.0374968" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link1_col7"/>
         <body name="right_link2" pos="-0.0455 -0.0339 -0.02" quat="1.32679e-06 0 0 -1">
           <inertial pos="0.000134495 -0.0331253 0.129165" quat="2.33681e-05 -0.707118 0.000136799 -0.707096" mass="1.46908" diaginertia="0.000800088 0.014599 0.0146686"/>
           <joint name="right_joint2" pos="0 0 0" axis="0 1 0" range="0 3.66519" actuatorfrcrange="-27 27"/>
           <geom pos="-0.0740001 -0.08025 -0.0174977" type="mesh" contype="0" conaffinity="0" group="2" rgba="0 0.4 0.6 1" mesh="link2"/>
-          <geom name="right_link2_col" size="0.05 0.12" pos="0 -0.033 0.13" quat="0 1 0 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+          <geom name="right_link2_col" size="0.05 0.11" pos="0 -0.033 0.14" quat="0 1 0 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
           <body name="right_link3" pos="4.08431e-07 -0.0688 0.264" quat="1.32679e-06 0 0 -1">
             <inertial pos="-0.0556042 -0.0340514 -0.135083" quat="0.66731 -0.0848198 0.734174 0.0921503" mass="0.982553" diaginertia="0.000876442 0.0076296 0.00765198"/>
             <joint name="right_joint3" pos="0 0 0" axis="0 1 0" range="0 3.14159" actuatorfrcrange="-27 27"/>
             <geom pos="-0.0740003 -0.0813 -0.281499" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.552941 0.580392 0.203922 1" mesh="link3"/>
-            <geom name="right_link3_col" size="0.045 0.115" pos="-0.055 -0.034 -0.12" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+            <geom name="right_link3_col0" pos="-0.0740003 -0.0813 -0.281499" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col0"/>
+            <geom name="right_link3_col1" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col1"/>
+            <geom name="right_link3_col2" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col2"/>
+            <geom name="right_link3_col3" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col3"/>
+            <geom name="right_link3_col4" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col4"/>
+            <geom name="right_link3_col5" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col5"/>
+            <geom name="right_link3_col6" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col6"/>
+            <geom name="right_link3_col7" pos="-0.0740003 -0.0813 -0.281499" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link3_col7"/>
             <body name="right_link4" pos="-0.0600003 -0.0688 -0.244999" quat="1 0 0 0">
               <inertial pos="-0.0550959 0.032726 -0.0575534" quat="0.100607 0.941086 -0.0797556 0.31285" mass="0.462165" diaginertia="0.00028779 0.00076643 0.000787888"/>
               <joint name="right_joint4" pos="0 0 0" axis="0 1 0" range="-1.69297 1.5708" actuatorfrcrange="-10 10"/>
               <geom pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.545098 0.52549 0.419608 1" mesh="link4"/>
-              <geom name="right_link4_col" size="0.042 0.0295" pos="-0.055 0.033 -0.0345" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+              <geom name="right_link4_col0" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col0"/>
+              <geom name="right_link4_col1" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col1"/>
+              <geom name="right_link4_col2" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col2"/>
+              <geom name="right_link4_col3" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col3"/>
+              <geom name="right_link4_col4" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col4"/>
+              <geom name="right_link4_col5" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col5"/>
+              <geom name="right_link4_col6" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col6"/>
+              <geom name="right_link4_col7" pos="-0.0140003 -0.0125 -0.0364989" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link4_col7"/>
               <body name="right_link5" pos="-0.0405003 0.0338995 -0.0739989" quat="1 0 0 0">
                 <inertial pos="0.0375847 -3.55003e-05 -0.000825911" quat="0.646686 0.642392 0.288656 -0.292929" mass="0.403307" diaginertia="0.000169647 0.000195686 0.000219794"/>
                 <joint name="right_joint5" pos="0 0 0" axis="1 0 0" range="-1.5708 1.5708" actuatorfrcrange="-10 10"/>
                 <geom pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0" group="2" rgba="0.827451 0.623529 0.784314 1" mesh="link5"/>
-                <geom name="right_link5_col" size="0.04 0.025" pos="0.02 0 -0.015" quat="0.894427 0 -0.447214 0" type="capsule" group="3" mass="0" rgba="0 1 0 0.25"/>
+                <geom name="right_link5_col0" pos="0.0265 -0.0463995 0.0375" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col0"/>
+                <geom name="right_link5_col1" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col1"/>
+                <geom name="right_link5_col2" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col2"/>
+                <geom name="right_link5_col3" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col3"/>
+                <geom name="right_link5_col4" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col4"/>
+                <geom name="right_link5_col5" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col5"/>
+                <geom name="right_link5_col6" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col6"/>
+                <geom name="right_link5_col7" pos="0.0265 -0.0463995 0.0375" quat="1 0 0 0" type="mesh" group="3" mass="0" rgba="0 1 0 0.25" mesh="link5_col7"/>
                 <body name="right_link6" pos="0.0404996 2.39858e-07 -0.0356" quat="1 0 0 0">
                   <inertial pos="0 0 0" mass="1e-06" diaginertia="1e-09 1e-09 1e-09"/>
                   <joint name="right_joint6" pos="0 0 0" axis="0 0 -1" range="-2.0944 2.0944" actuatorfrcrange="-10 10"/>

@@ -40,29 +40,34 @@ GRIP_KP, GRIP_KD = 800.0, 20.0
 # and 10 -- two independent sources agreeing. See set_joint_torque_limits.
 JOINT_PEAK_TORQUE = [27.0, 27.0, 27.0, 10.0, 10.0, 10.0]
 
-# Capsule collision proxies replacing the STL hulls, per link.
-# (fromto in the link's own frame, radius). Rough but cheap; refine visually.
+# Capsule collision proxy for link2 only: it's the one link whose hand-tuned
+# capsule actually holds up (convex-hull/real-volume ratio 1.3x, well under a
+# millimetre of the visual mesh centre at rest) -- see the audit that added
+# MESH_COLLISION below. (fromto in the link's own frame, radius.)
+#
+# Near end pulled in from 0.01 to 0.03: giving link4 real (accurate, correctly
+# placed) mesh collision revealed this capsule's near cap reached back far
+# enough to poke ~0.2mm into link4's wrist housing at the app's actual rest
+# pose (REST_Q in src/main.js), registering a false self-collision every idle
+# frame -- same shape of bug as the link4/gripper one below, one link over.
 PROXY = {
-    "link1": ([-0.06, 0.0, 0.0, 0.02, 0.0, 0.0], 0.055),
-    "link2": ([0.0, -0.033, 0.01, 0.0, -0.033, 0.25], 0.05),
-    "link3": ([-0.055, -0.034, -0.005, -0.055, -0.034, -0.235], 0.045),
-    # Wrist end pulled back from -0.07 to -0.064: giving the gripper real mesh
-    # collision (see MESH_COLLISION) revealed this capsule's old reach poked
-    # ~0.8mm into the gripper mount at rest, registering a false self-collision
-    # on every idle frame.
-    "link4": ([-0.055, 0.033, -0.005, -0.055, 0.033, -0.064], 0.042),
-    "link5": ([0.0, 0.0, 0.0, 0.04, 0.0, -0.03], 0.04),
+    "link2": ([0.0, -0.033, 0.03, 0.0, -0.033, 0.25], 0.05),
 }
 
-# gripper/tip_left/tip_right get no capsule proxy and no single-mesh convex
-# hull either: both pad real empty space around a part that isn't
-# capsule/box-shaped, and that slack is exactly what you feel as "the object
-# registers as gripped before the fingers actually touch it," or "the palm
-# hits things before it visually looks like it should." These instead collide
-# on a CoACD convex decomposition of their own mesh -- a handful of small
-# convex hulls whose union hugs the real (non-convex) shape, rather than one
-# hull bridging every concavity. See decompose_collision_mesh / MESH_COLLISION.
-MESH_COLLISION = {"gripper", "tip_left", "tip_right"}
+# Everything else with a non-trivial shape collides on a CoACD convex
+# decomposition of its own mesh instead of a hand-tuned capsule/box proxy: a
+# handful of small convex hulls whose union hugs the real (non-convex) shape,
+# rather than one hull (or one capsule) bridging every concavity.
+#
+# link1/link3/link4/link5 moved here after auditing the old hand-tuned
+# PROXY capsules against the actual mesh at rest pose: their capsule centres
+# were 15-26mm off the visual mesh centre (worst at link3/link4, the elbow
+# motor and the wrist joint right after it -- "the base of the wrist"), with
+# convex-hull/real-volume ratios of 1.2-3.2x on top of that. Those capsule
+# numbers were hand-guessed once and never actually verified, unlike link2's
+# (2.2mm offset, 1.3x ratio), which is why link2 alone stays a capsule above.
+# See decompose_collision_mesh / add_mesh_collision_hulls.
+MESH_COLLISION = {"gripper", "tip_left", "tip_right", "link1", "link3", "link4", "link5"}
 
 # threshold/max_convex_hull trade decomposition tightness for part count (and
 # build time); the mcts_*/resolution knobs are turned down from CoACD's
@@ -96,17 +101,17 @@ def arm_with_gripper(arm_xml, grip_xml):
 
 def add_collision_proxies(spec, use_proxies, mesh_offsets=None):
     """Demote STL geoms to visual-only and add capsule collision proxies.
-    gripper/tip_left/tip_right are demoted too -- their real collision geoms
-    are convex-decomposition hulls added later, once both arms exist in the
-    top-level spec (see add_gripper_collision_hulls).
+    MESH_COLLISION bodies are demoted too -- their real collision geoms are
+    convex-decomposition hulls added later, once both arms exist in the
+    top-level spec (see add_mesh_collision_hulls).
 
     mesh_offsets, if given, records each MESH_COLLISION body's visual geom
-    pos/quat (keyed by base name). The STL vertices for gripper/tip_left/
-    tip_right are not authored with their origin at the body frame -- the
-    original <geom pos=... quat=...> is what places the mesh correctly, and
-    the CoACD hulls (decomposed straight from those same raw STL vertices,
-    see decompose_collision_mesh) need that exact same placement or they land
-    with zero offset relative to the body: right shape, wrong spot.
+    pos/quat (keyed by base name). None of these STLs are authored with their
+    origin at the body frame -- the original <geom pos=... quat=...> is what
+    places the mesh correctly, and the CoACD hulls (decomposed straight from
+    those same raw STL vertices, see decompose_collision_mesh) need that
+    exact same placement or they land with zero offset relative to the body:
+    right shape, wrong spot.
     """
     if not use_proxies:
         return
@@ -136,11 +141,11 @@ def add_collision_proxies(spec, use_proxies, mesh_offsets=None):
             c.density = 0.0
 
 
-def add_gripper_collision_hulls(spec, sides, mesh_out, hull_parts, mesh_offsets):
+def add_mesh_collision_hulls(spec, sides, mesh_out, hull_parts, mesh_offsets):
     """Add the CoACD collision hulls (see decompose_collision_mesh) to both
-    arms' gripper/tip_left/tip_right bodies. Runs on the fully-assembled
-    top-level spec (bodies named e.g. "left_gripper") so each mesh asset is
-    written once and shared by both arms, same as the visual STLs.
+    arms' MESH_COLLISION bodies. Runs on the fully-assembled top-level spec
+    (bodies named e.g. "left_gripper") so each mesh asset is written once and
+    shared by both arms, same as the visual STLs.
 
     Each hull geom gets the same pos/quat as the body's original visual mesh
     geom (mesh_offsets, from add_collision_proxies) -- the hulls are
@@ -250,12 +255,19 @@ def build(args):
     root = args.i2rt_models
     arm_xml = os.path.join(root, "arm/yam/yam.xml")
     grip_xml = os.path.join(root, "gripper/linear_4310/linear_4310.xml")
+    arm_assets = os.path.join(root, "arm/yam/assets")
     grip_assets = os.path.join(root, "gripper/linear_4310/assets")
+    # Where to find each MESH_COLLISION body's source STL for decomposition --
+    # link* live under the arm model, gripper/tip_* under the gripper model.
+    mesh_src_dirs = {
+        "link1": arm_assets, "link3": arm_assets, "link4": arm_assets, "link5": arm_assets,
+        "gripper": grip_assets, "tip_left": grip_assets, "tip_right": grip_assets,
+    }
 
     out = args.out
     mesh_out = os.path.abspath(os.path.join(out, "meshes"))
     os.makedirs(mesh_out, exist_ok=True)
-    for src in (os.path.join(root, "arm/yam/assets"), grip_assets):
+    for src in (arm_assets, grip_assets):
         for fn in os.listdir(src):
             shutil.copy(os.path.join(src, fn), os.path.join(mesh_out, fn))
 
@@ -264,7 +276,7 @@ def build(args):
         for base in MESH_COLLISION:
             print(f"[coacd] decomposing {base}.stl ...")
             hull_parts[base] = decompose_collision_mesh(
-                os.path.join(grip_assets, f"{base}.stl"))
+                os.path.join(mesh_src_dirs[base], f"{base}.stl"))
             print(f"[coacd] {base}: {len(hull_parts[base])} convex hulls")
 
     spec = mujoco.MjSpec()
@@ -298,7 +310,7 @@ def build(args):
         spec.attach(arm, prefix=f"{side}_", frame=f)
 
     if hull_parts:
-        add_gripper_collision_hulls(spec, [s[0] for s in sides], mesh_out, hull_parts, mesh_offsets)
+        add_mesh_collision_hulls(spec, [s[0] for s in sides], mesh_out, hull_parts, mesh_offsets)
 
     add_actuators(spec, [s[0] for s in sides])
     set_joint_torque_limits(spec, [s[0] for s in sides])
