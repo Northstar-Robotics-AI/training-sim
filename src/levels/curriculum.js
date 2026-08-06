@@ -39,6 +39,29 @@ const box = (size, rgba, mass = 0.15) =>
 // solref stiffer than default: soft contacts make a light cube feel like jelly
 // through a teleop loop and operators over-correct.
 
+// A round bore, approximated as a ring of flat box segments (MuJoCo has no
+// boolean subtraction, so an actual cylindrical cavity isn't a primitive).
+// Each segment's inner face sits exactly on the innerR circle at its own
+// center angle -- the true constriction a peg has to pass through -- and
+// bows slightly outward at the segment edges, so the polygon is always at
+// or outside innerR and never pinches the peg tighter than intended.
+const boreRing = (innerR, outerR, zCenter, halfHeight, rgba, n = 16) => {
+  const segs = [];
+  const radialHalf = (outerR - innerR) / 2;
+  const midR = innerR + radialHalf;
+  const tangentialHalf = outerR * Math.tan(Math.PI / n) * 1.05;
+  for (let i = 0; i < n; i++) {
+    const angle = (2 * Math.PI * i) / n;
+    const x = midR * Math.cos(angle);
+    const y = midR * Math.sin(angle);
+    const qw = Math.cos(angle / 2);
+    const qz = Math.sin(angle / 2);
+    segs.push(`<geom type="box" size="${radialHalf.toFixed(5)} ${tangentialHalf.toFixed(5)} ${halfHeight}" `
+      + `pos="${x.toFixed(5)} ${y.toFixed(5)} ${zCenter}" quat="${qw.toFixed(6)} 0 0 ${qz.toFixed(6)}" rgba="${rgba}"/>`);
+  }
+  return segs.join('\n      ');
+};
+
 export const CURRICULUM = [
 
   new Level({
@@ -278,10 +301,7 @@ export const CURRICULUM = [
         [L.x, L.y, TABLE_Z + 0.05])}
     <body name="socket" pos="${R.x} ${R.y} ${TABLE_Z}">
       <geom type="box" size="0.05 0.05 0.005" pos="0 0 0.005" rgba="0.35 0.38 0.45 1"/>
-      <geom type="cylinder" size="0.008 0.03" pos="0.023 0 0.04" rgba="0.3 0.32 0.4 1"/>
-      <geom type="cylinder" size="0.008 0.03" pos="-0.023 0 0.04" rgba="0.3 0.32 0.4 1"/>
-      <geom type="cylinder" size="0.008 0.03" pos="0 0.023 0.04" rgba="0.3 0.32 0.4 1"/>
-      <geom type="cylinder" size="0.008 0.03" pos="0 -0.023 0.04" rgba="0.3 0.32 0.4 1"/>
+      ${boreRing(0.0125, 0.045, 0.04, 0.03, '0.3 0.32 0.4 1')}
       <site name="hole_site" pos="0 0 0.035" size="0.008" rgba="0.1 0.9 0.4 0.5"/>
     </body>`,
     }),
