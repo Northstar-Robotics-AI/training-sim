@@ -273,19 +273,21 @@ export const CURRICULUM = [
       worldbody: `
     <body name="tray" pos="${(L.x + R.x) / 2} 0 ${TABLE_Z + 0.02}">
       <freejoint name="tray_free"/>
-      <geom type="box" size="0.16 0.05 0.006" rgba="0.75 0.75 0.8 1" mass="0.5"
-            friction="1.4 0.02 0.001" condim="4" solref="0.008 1"/>
-      <geom type="box" size="0.012 0.05 0.025" pos="0.16 0 0.025" rgba="0.5 0.5 0.55 1" mass="0.05"/>
-      <geom type="box" size="0.012 0.05 0.025" pos="-0.16 0 0.025" rgba="0.5 0.5 0.55 1" mass="0.05"/>
+      <geom type="box" size="0.16 0.10 0.006" rgba="0.75 0.75 0.8 1" mass="0.5"
+            friction="1.6 0.025 0.001" condim="4" solref="0.008 1"/>
+      <geom type="box" size="0.012 0.10 0.025" pos="0.16 0 0.025" rgba="0.5 0.5 0.55 1" mass="0.05"
+            friction="1.9 0.03 0.001" condim="4"/>
+      <geom type="box" size="0.012 0.10 0.025" pos="-0.16 0 0.025" rgba="0.5 0.5 0.55 1" mass="0.05"
+            friction="1.9 0.03 0.001" condim="4"/>
       <site name="tray_site" pos="0 0 0.01" size="0.01" rgba="0 0 0 0"/>
     </body>
     ${freeBody('ball', '<geom type="sphere" size="0.022" rgba="0.9 0.4 0.6 1" mass="0.05" '
       + 'friction="0.6 0.01 0.001" condim="4"/>',
       [(L.x + R.x) / 2, 0, TABLE_Z + 0.06])}
-    <geom type="box" size="0.07 0.20 0.004" pos="${(L.x + R.x) / 2} 0 ${TABLE_Z + 0.30}"
+    <geom type="box" size="0.14 0.20 0.004" pos="${(L.x + R.x) / 2} 0 ${TABLE_Z + 0.30}"
           rgba="0.2 0.8 1 0.3" contype="0" conaffinity="0"/>
     <site name="goal_shelf" pos="${(L.x + R.x) / 2} 0 ${TABLE_Z + 0.30}"
-          size="0.07 0.20 0.004" type="box" rgba="0 0 0 0"/>`,
+          size="0.14 0.20 0.004" type="box" rgba="0 0 0 0"/>`,
     }),
     reset(ctx) {
       const r = ctx.rng;

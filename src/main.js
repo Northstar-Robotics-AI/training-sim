@@ -32,17 +32,46 @@ function meshUrlsFromXml(xml) {
 // stow pose would pull the arm back toward its own joint stops.
 const HOME_Q = [0, 0.9, 1.2, 0, -0.5, 0];
 
-// Rest posture, per side: the YAM's true zero position (all joints at 0),
-// so an episode starts from the same calibration pose the real hardware
-// homes to. joint2 and joint3 both range from 0, so this sits right at
-// their lower stop -- that's the hardware's own convention, not a mid-range
-// posture chosen for clearance (see the folded pose this replaced, kept
-// here in history if that clearance turns out to matter for self-collision
-// or controller settling at reset).
-const REST_Q = {
-  left: [0, 0, 0, 0, 0, 0],
-  right: [0, 0, 0, 0, 0, 0],
+// Two candidate rest/reset postures, per side. Flip REST_POSE_STYLE below to
+// switch which one an episode actually starts from -- both are kept here so
+// that choice is a one-line change, not a re-derivation.
+//
+// 'original': the pre-existing reset pose, identical to HOME_Q on both sides
+// (the arm's old reset just reused the IK nullspace bias). Elbow up, wrist
+// level, gripper angled up and out.
+//
+// 'folded': arms tucked back over their own shoulders, wrist level, gripper
+// pointing forward (+x, out past the table edge) instead of up and outward.
+// joint1 is ±0.3 rad per side to cancel the 0.3 rad toe-in baked into each
+// base's mounting quat in bimanual_yam.xml -- at joint1=0 the two grippers
+// would splay ~34 deg apart instead of pointing the same way. Found by
+// optimizing for a compact, collision-free, level-approach silhouette (see
+// tools/ik_smoke.mjs-style scratch search); every joint keeps >0.4 rad of
+// clearance from its stop so the first IK solve of an episode never starts
+// pinned against a limit.
+//
+// 'semiFolded': the per-joint midpoint of 'original' and 'folded' -- partway
+// tucked rather than fully stowed. Checked headlessly the same way as
+// 'folded' (no self-collision, approach axis still mostly forward).
+const REST_POSES = {
+  original: {
+    left: HOME_Q,
+    right: HOME_Q,
+  },
+  semiFolded: {
+    left: [0.15, 0.65, 0.875, -0.075, -0.25, 0],
+    right: [-0.15, 0.65, 0.875, -0.075, -0.25, 0],
+  },
+  folded: {
+    left: [0.3, 0.4, 0.55, -0.15, 0, 0],
+    right: [-0.3, 0.4, 0.55, -0.15, 0, 0],
+  },
 };
+
+// 'original' | 'semiFolded' | 'folded' -- which posture resetEpisode() puts
+// the arms in.
+const REST_POSE_STYLE = 'semiFolded';
+const REST_Q = REST_POSES[REST_POSE_STYLE];
 
 // Control runs on its own fixed clock. 100 Hz is well above what an operator
 // can perceive and well below what the WASM build struggles with.
