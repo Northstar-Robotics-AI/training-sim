@@ -112,7 +112,8 @@ export const CURRICULUM = [
     teaches: 'Orientation control. Position alone is easy; wrist alignment is what novices lose.',
     timeLimit: 45,
     gate: { window: 5, needed: 4 },
-    qualityGate: { 'jerkIntegral.left': 900 },
+    // qualityGate: { 'jerkIntegral.left': 900 },
+    qualityGate: { 'jerkIntegral.left': 10000 },
     hint: 'Move your gripper into the ghost gripper. Position AND tilt must match. Hold it for one second.',
     props: () => ({
       // A translucent ghost of the *actual* gripper mesh (body + both
@@ -184,7 +185,8 @@ export const CURRICULUM = [
     teaches: 'Grasp timing and approach direction. First level where contact matters.',
     timeLimit: 60,
     gate: { window: 6, needed: 5 },
-    qualityGate: { gripperOverforceTime: 3.0, selfCollisionTime: 0.5 },
+    // qualityGate: { gripperOverforceTime: 3.0, selfCollisionTime: 0.5 },
+    qualityGate: { gripperOverforceTime: 15.0, selfCollisionTime: 5.0 },
     hint: 'Approach from above with the gripper open. Close slowly — squeezing hard is scored against you.',
     props: () => ({
       worldbody: `${freeBody('cube', box('0.022 0.022 0.022', '0.9 0.3 0.25 1'),
@@ -224,7 +226,7 @@ export const CURRICULUM = [
     teaches: 'Two arms, sequential. The receiving gripper must close before the giving one opens.',
     timeLimit: 75,
     gate: { window: 6, needed: 4 },
-    qualityGate: { selfCollisionTime: 1.0 },
+    qualityGate: { selfCollisionTime: 3.0 },
     hint: 'The bin is out of the left arm\'s reach. Pass the cube in mid-air near the centre.',
     props: () => ({
       worldbody: `${freeBody('cube', box('0.022 0.022 0.022', '0.85 0.7 0.2 1'),
@@ -266,19 +268,32 @@ export const CURRICULUM = [
     teaches: 'Simultaneous bimanual control under a closed kinematic chain.',
     timeLimit: 75,
     gate: { window: 6, needed: 4 },
-    qualityGate: { gripperOverforceTime: 4.0 },
+    // qualityGate: { gripperOverforceTime: 4.0 },
+    qualityGate: {},
     hint: 'The tray is too wide for one gripper. Pinch both ends and raise at the same rate — '
         + 'if one hand leads, the tray tips.',
     props: () => ({
       worldbody: `
     <body name="tray" pos="${(L.x + R.x) / 2} 0 ${TABLE_Z + 0.02}">
       <freejoint name="tray_free"/>
-      <geom type="box" size="0.16 0.10 0.006" rgba="0.75 0.75 0.8 1" mass="0.5"
-            friction="1.6 0.025 0.001" condim="4" solref="0.008 1"/>
-      <geom type="box" size="0.012 0.10 0.025" pos="0.16 0 0.025" rgba="0.5 0.5 0.55 1" mass="0.05"
-            friction="1.9 0.03 0.001" condim="4"/>
-      <geom type="box" size="0.012 0.10 0.025" pos="-0.16 0 0.025" rgba="0.5 0.5 0.55 1" mass="0.05"
-            friction="1.9 0.03 0.001" condim="4"/>
+      <geom type="box" size="0.16 0.10 0.006" rgba="0.75 0.75 0.8 1" mass="0.1"
+            friction="2.3 0.035 0.001" condim="4" solref="0.008 1"/>
+      <!-- Handles are raised grip bars on two legs, not solid blocks -- the
+           gap underneath (z 0.006-0.126) is empty so a gripper can slide
+           fingers under the bar and close around it, instead of pinching a
+           slab that's flush with the tray surface. -->
+      <geom type="box" size="0.02 0.012 0.060" pos="0.16 0.085 0.066" rgba="0.5 0.5 0.55 1" mass="0.01"
+            friction="2.8 0.05 0.002" condim="4"/>
+      <geom type="box" size="0.02 0.012 0.060" pos="0.16 -0.085 0.066" rgba="0.5 0.5 0.55 1" mass="0.01"
+            friction="2.8 0.05 0.002" condim="4"/>
+      <geom type="box" size="0.009 0.10 0.004" pos="0.16 0 0.130" rgba="0.5 0.5 0.55 1" mass="0.03"
+            friction="2.8 0.05 0.002" condim="4"/>
+      <geom type="box" size="0.02 0.012 0.060" pos="-0.16 0.085 0.066" rgba="0.5 0.5 0.55 1" mass="0.01"
+            friction="2.8 0.05 0.002" condim="4"/>
+      <geom type="box" size="0.02 0.012 0.060" pos="-0.16 -0.085 0.066" rgba="0.5 0.5 0.55 1" mass="0.01"
+            friction="2.8 0.05 0.002" condim="4"/>
+      <geom type="box" size="0.009 0.10 0.004" pos="-0.16 0 0.130" rgba="0.5 0.5 0.55 1" mass="0.03"
+            friction="2.8 0.05 0.002" condim="4"/>
       <site name="tray_site" pos="0 0 0.01" size="0.01" rgba="0 0 0 0"/>
     </body>
     ${freeBody('ball', '<geom type="sphere" size="0.022" rgba="0.9 0.4 0.6 1" mass="0.05" '
@@ -322,7 +337,8 @@ export const CURRICULUM = [
     teaches: 'Precision under contact. 3 mm clearance — beyond visual servoing, you need compliance.',
     timeLimit: 90,
     gate: { window: 8, needed: 5 },
-    qualityGate: { 'jerkIntegral.left': 1200, gripperOverforceTime: 5.0 },
+    // qualityGate: { 'jerkIntegral.left': 1200, gripperOverforceTime: 5.0 },
+        qualityGate: { 'jerkIntegral.left': 10000, gripperOverforceTime: 15.0 },
     hint: 'Get the peg above the hole, then descend slowly. Fighting a jam makes it worse — '
         + 'lift 5 mm, re-align, try again.',
     props: () => ({
