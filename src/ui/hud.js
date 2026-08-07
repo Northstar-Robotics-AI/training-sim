@@ -10,12 +10,25 @@
 // feedback is actually useful.
 
 import * as THREE from 'three';
+import { metricLabel, formatMetricValue } from '../levels/Level.js';
 
-const W = 512;
-const H = 256;
+const W = 640;
+const H = 440;
+
+// Must match curriculum.js's TABLE_Z (not shared/exported -- that file has no
+// other reason to expose it). The panel's bottom edge is pinned to this.
+const TABLE_Z = 0.74;
+const PANEL_W = 0.78;
+const PANEL_H = PANEL_W * (H / W);
 
 export class HUD {
-  constructor(scene, { position = [0.55, 1.15, 0], lookAt = [0, 1.2, 0.4] } = {}) {
+  // Parked further back than the old spot, which sat close enough that
+  // lookAt()'s off-axis target (aimed near the arm base rather than at the
+  // operator) read as a visible tilt. Bigger physical size compensates for
+  // the added distance -- and buys the room the failure readout and live
+  // metric rows below need. Bottom edge sits at table height so the panel
+  // reads as standing on the table rather than floating above it.
+  constructor(scene, { position = [0.9, TABLE_Z + PANEL_H / 2, 0] } = {}) {
     this.canvas = document.createElement('canvas');
     this.canvas.width = W;
     this.canvas.height = H;
@@ -23,11 +36,14 @@ export class HUD {
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
 
-    const geo = new THREE.PlaneGeometry(0.44, 0.22);
-    const mat = new THREE.MeshBasicMaterial({ map: this.texture, transparent: true });
+    const geo = new THREE.PlaneGeometry(PANEL_W, PANEL_H);
+    const mat = new THREE.MeshBasicMaterial({ map: this.texture, transparent: true, side: THREE.DoubleSide });
     this.panel = new THREE.Mesh(geo, mat);
     this.panel.position.set(...position);
-    this.panel.lookAt(new THREE.Vector3(...lookAt));
+    // Pure yaw, no pitch/roll -- squarely faces back down -X, the side both
+    // the desktop camera and the VR spawn sit on, instead of lookAt()'s
+    // skewed target which baked in an off-axis tilt.
+    this.panel.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
     scene.add(this.panel);
 
     this.dom = document.getElementById('overlay');
@@ -43,10 +59,16 @@ export class HUD {
    * @param {string} s.readout    level-specific line
    * @param {string} s.status     'running' | 'success' | 'failure' | 'timeout'
    * @param {object} s.gate       {passed, window, needed}
+   * @param {string[]} s.reasons  why the last finished episode didn't count
+   *   toward the gate -- empty for a clean success. Persists through the
+   *   post-episode pause, cleared the moment the next episode starts.
+   * @param {{key, value, limit}[]} s.metrics  live quality-metric readout,
+   *   `limit` undefined wherever this level doesn't gate on that key.
    * @param {number} s.physHz
    */
   update(s) {
     const c = this.ctx;
+    const M = 24; // left/right content margin
     c.clearRect(0, 0, W, H);
     c.fillStyle = 'rgba(12,14,18,0.88)';
     roundRect(c, 0, 0, W, H, 16);
@@ -56,44 +78,74 @@ export class HUD {
       : s.status === 'failure' || s.status === 'timeout' ? '#f87171' : '#38bdf8';
 
     c.fillStyle = accent;
-    c.font = '600 13px ui-monospace, Menlo, monospace';
-    c.fillText(s.levelId.toUpperCase(), 20, 30);
+    c.font = '600 15px ui-monospace, Menlo, monospace';
+    c.fillText(s.levelId.toUpperCase(), M, 34);
 
     c.fillStyle = '#f8fafc';
-    c.font = '600 26px system-ui, sans-serif';
-    c.fillText(s.levelTitle, 20, 62);
+    c.font = '600 28px system-ui, sans-serif';
+    c.fillText(s.levelTitle, M, 76);
 
     c.fillStyle = '#94a3b8';
-    c.font = '15px system-ui, sans-serif';
-    wrap(c, s.hint, 20, 90, W - 40, 20, 2);
+    c.font = '16px system-ui, sans-serif';
+    wrap(c, s.hint, M, 106, W - 2 * M, 22, 2);
 
     // progress
     c.fillStyle = '#1e293b';
-    roundRect(c, 20, 148, W - 40, 12, 6); c.fill();
+    roundRect(c, M, 172, W - 2 * M, 14, 7); c.fill();
     c.fillStyle = accent;
-    roundRect(c, 20, 148, Math.max((W - 40) * (s.progress || 0), 12), 12, 6); c.fill();
+    roundRect(c, M, 172, Math.max((W - 2 * M) * (s.progress || 0), 14), 14, 7); c.fill();
 
     c.fillStyle = '#cbd5e1';
-    c.font = '600 18px ui-monospace, Menlo, monospace';
-    c.fillText(`${Math.max(s.timeLeft, 0).toFixed(0)}s`, 20, 196);
+    c.font = '600 20px ui-monospace, Menlo, monospace';
+    c.fillText(`${Math.max(s.timeLeft, 0).toFixed(0)}s`, M, 216);
     if (s.readout) {
       c.fillStyle = '#94a3b8';
-      c.font = '15px ui-monospace, Menlo, monospace';
-      c.fillText(s.readout, 76, 196);
+      c.font = '16px ui-monospace, Menlo, monospace';
+      c.fillText(s.readout, M + 60, 216);
+    }
+
+    // Why the last episode didn't count, if it didn't. Fixed slot (blank on a
+    // clean success) so the metrics rows below don't jump around between draws.
+    if (s.reasons && s.reasons.length) {
+      c.fillStyle = s.status === 'success' ? '#fbbf24' : '#f87171';
+      c.font = '600 15px ui-monospace, Menlo, monospace';
+      wrap(c, s.reasons.join('  ·  '), M, 250, W - 2 * M, 18, 2);
+    }
+
+    // Live quality metrics -- the numbers a failure/no-count is actually made
+    // of, updated every frame so a rising jerk or overforce total is visible
+    // *during* the attempt, not just explained after the fact.
+    if (s.metrics) {
+      c.font = '14px ui-monospace, Menlo, monospace';
+      s.metrics.forEach((m, i) => {
+        const y = 302 + i * 21;
+        const val = formatMetricValue(m.key, m.value);
+        const over = m.limit !== undefined && m.value > m.limit;
+        const near = m.limit !== undefined && !over && m.value > m.limit * 0.8;
+        c.fillStyle = '#64748b';
+        c.fillText(metricLabel(m.key), M, y);
+        c.fillStyle = over ? '#f87171' : near ? '#fbbf24' : m.limit !== undefined ? '#4ade80' : '#94a3b8';
+        c.textAlign = 'right';
+        const label = m.limit !== undefined
+          ? `${val} / ${formatMetricValue(m.key, m.limit)}`
+          : val;
+        c.fillText(label, W - M, y);
+        c.textAlign = 'left';
+      });
     }
 
     c.fillStyle = '#64748b';
     c.font = '13px ui-monospace, Menlo, monospace';
-    c.fillText(`gate ${s.gate.passed}/${s.gate.needed} of last ${s.gate.window}`, 20, 226);
+    c.fillText(`gate ${s.gate.passed}/${s.gate.needed} of last ${s.gate.window}`, M, 400);
     c.textAlign = 'right';
-    c.fillText(`${s.physHz | 0} Hz phys`, W - 20, 226);
+    c.fillText(`${s.physHz | 0} Hz phys`, W - M, 400);
     c.textAlign = 'left';
 
     if (s.debug) {
       c.fillStyle = '#fbbf24';
       c.font = '11px ui-monospace, Menlo, monospace';
       const lines = Array.isArray(s.debug) ? s.debug : [s.debug];
-      lines.forEach((line, i) => c.fillText(line, 20, 238 + i * 12));
+      lines.forEach((line, i) => c.fillText(line, M, 418 + i * 12));
     }
 
     this.texture.needsUpdate = true;

@@ -26,6 +26,9 @@ export class Level {
       reset: () => {},
       success: () => false,
       failure: () => false,
+      // Shown on the HUD when `failure` fires. A single generic fallback
+      // ('objective failed') covers levels that never define `failure`.
+      failureReason: 'objective failed',
       hint: '',
     }, spec);
   }
@@ -135,13 +138,44 @@ export class EpisodeMetrics {
       ? Math.min(netDisplacement / this.pathLength[side], 1) : 0;
   }
 
+  /** Dotted-path lookup, e.g. get('jerkIntegral.left'). */
+  get(key) {
+    return key.includes('.')
+      ? key.split('.').reduce((o, k) => o?.[k], this)
+      : this[key];
+  }
+
   passesGate(gate) {
     for (const [key, limit] of Object.entries(gate)) {
-      const v = key.includes('.')
-        ? key.split('.').reduce((o, k) => o?.[k], this)
-        : this[key];
+      const v = this.get(key);
       if (typeof v === 'number' && v > limit) return false;
     }
     return true;
   }
+
+  /** Which gate entries are currently over their limit, for HUD/failure text. */
+  failingEntries(gate) {
+    const out = [];
+    for (const [key, limit] of Object.entries(gate)) {
+      const v = this.get(key);
+      if (typeof v === 'number' && v > limit) out.push({ key, value: v, limit });
+    }
+    return out;
+  }
+}
+
+const METRIC_LABELS = {
+  'jerkIntegral.left': 'left jerk',
+  'jerkIntegral.right': 'right jerk',
+  gripperOverforceTime: 'gripper overforce',
+  selfCollisionTime: 'self-collision',
+};
+
+export function metricLabel(key) {
+  return METRIC_LABELS[key] || key;
+}
+
+/** Time-accumulator metrics read as seconds; everything else as a raw count. */
+export function formatMetricValue(key, v) {
+  return key.toLowerCase().endsWith('time') ? `${v.toFixed(2)}s` : v.toFixed(0);
 }

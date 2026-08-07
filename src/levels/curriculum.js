@@ -215,6 +215,7 @@ export const CURRICULUM = [
     },
     success: (ctx) => ctx.state.settled >= 0.5,
     failure: (ctx) => ctx.sim.bodyPose('cube').pos[2] < TABLE_Z - 0.15,
+    failureReason: 'cube fell off the table',
   }),
 
   new Level({
@@ -256,6 +257,7 @@ export const CURRICULUM = [
     // Requiring everHeldRight stops the operator solving it by throwing.
     success: (ctx) => ctx.state.settled >= 0.5 && ctx.state.everHeldRight,
     failure: (ctx) => ctx.sim.bodyPose('cube').pos[2] < TABLE_Z - 0.15,
+    failureReason: 'cube fell off the table',
   }),
 
   new Level({
@@ -309,6 +311,7 @@ export const CURRICULUM = [
     },
     success: (ctx) => ctx.state.holdT >= 1.5,
     failure: (ctx) => ctx.sim.bodyPose('ball').pos[2] < TABLE_Z - 0.05,
+    failureReason: 'ball fell off the tray',
   }),
 
   new Level({
@@ -350,6 +353,7 @@ export const CURRICULUM = [
     },
     success: (ctx) => ctx.state.holdT >= 1.0,
     failure: (ctx) => ctx.sim.bodyPose('peg').pos[2] < TABLE_Z - 0.15,
+    failureReason: 'peg fell off the table',
   }),
 
   new Level({

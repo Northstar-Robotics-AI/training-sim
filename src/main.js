@@ -8,7 +8,9 @@ import { ArmIK } from './control/ik.js';
 import { ClutchRetargeter, xrPosToMj, xrQuatToMj } from './control/retarget.js';
 import { XRInput } from './xr/xrInput.js';
 import { CURRICULUM } from './levels/curriculum.js';
-import { composeSceneXML, makeRng, EpisodeMetrics } from './levels/Level.js';
+import {
+  composeSceneXML, makeRng, EpisodeMetrics, metricLabel, formatMetricValue,
+} from './levels/Level.js';
 import { Recorder, makeSampler } from './record/recorder.js';
 import { HUD } from './ui/hud.js';
 
@@ -71,6 +73,7 @@ class App {
     this.recorder = new Recorder();
     this.metrics = new EpisodeMetrics();
     this.results = [];      // recent outcomes for gating
+    this._lastReasons = []; // why the most recent finished episode didn't count
     this.seed = 1;
     this.physHz = 0;
     this._ctlAcc = 0;
@@ -232,6 +235,7 @@ class App {
     // the fresh episode -- resetting it a second time, or skipping a level.
     clearTimeout(this._endTimer);
     this._endTimer = null;
+    this._lastReasons = [];
 
     const sim = this.sim;
     sim.reset();
@@ -450,6 +454,17 @@ class App {
         window: this.level.gate.window,
         needed: this.level.gate.needed,
       },
+      reasons: this._lastReasons,
+      // Always visible, not just at failure -- the point is watching them
+      // move during the attempt, not reading them after the fact. `limit`
+      // is undefined wherever this level's qualityGate doesn't gate on that
+      // key; the HUD renders those neutrally instead of red/green.
+      metrics: [
+        { key: 'jerkIntegral.left', value: this.metrics.jerkIntegral.left },
+        { key: 'jerkIntegral.right', value: this.metrics.jerkIntegral.right },
+        { key: 'gripperOverforceTime', value: this.metrics.gripperOverforceTime },
+        { key: 'selfCollisionTime', value: this.metrics.selfCollisionTime },
+      ].map((m) => ({ ...m, limit: this.level.qualityGate[m.key] })),
       physHz: this.physHz,
       debug: [fmt('left'), fmt('right')],
     });
@@ -504,6 +519,22 @@ class App {
     // its demo is not worth training on.
     this.results.push(outcome === 'success' && passedQuality);
     if (this.results.length > this.level.gate.window) this.results.shift();
+
+    // Surfaced on the HUD for the 1.8s pause below, so the reason an episode
+    // didn't count is visible without digging through the recorder log. A
+    // clean success has nothing to explain.
+    if (outcome === 'timeout') {
+      this._lastReasons = ['ran out of time'];
+    } else if (outcome === 'failure') {
+      this._lastReasons = [this.level.failureReason];
+    } else if (!passedQuality) {
+      this._lastReasons = this.metrics.failingEntries(this.level.qualityGate).map(
+        ({ key, value, limit }) => `${metricLabel(key)} ${formatMetricValue(key, value)} `
+          + `over ${formatMetricValue(key, limit)} limit`,
+      );
+    } else {
+      this._lastReasons = [];
+    }
 
     this.xr.pulse('left', outcome === 'success' ? 0.6 : 0.2, 90);
     this.xr.pulse('right', outcome === 'success' ? 0.6 : 0.2, 90);
