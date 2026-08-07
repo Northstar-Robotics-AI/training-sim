@@ -70,45 +70,51 @@ export class HUD {
     const c = this.ctx;
     const M = 24; // left/right content margin
     c.clearRect(0, 0, W, H);
-    c.fillStyle = 'rgba(12,14,18,0.88)';
+    // Palette/type matches the VRTeleop operator dashboard's light theme
+    // (webapp/src/style.css: --surface, --border, --text, --accent, etc.).
+    c.fillStyle = 'rgba(255,255,255,0.92)';
     roundRect(c, 0, 0, W, H, 16);
     c.fill();
+    c.strokeStyle = '#DDE1EE';
+    c.lineWidth = 1;
+    roundRect(c, 0.5, 0.5, W - 1, H - 1, 16);
+    c.stroke();
 
-    const accent = s.status === 'success' ? '#4ade80'
-      : s.status === 'failure' || s.status === 'timeout' ? '#f87171' : '#38bdf8';
+    const accent = s.status === 'success' ? '#2A9D72'
+      : s.status === 'failure' || s.status === 'timeout' ? '#C94F4F' : '#6B7FD4';
 
     c.fillStyle = accent;
-    c.font = '600 15px ui-monospace, Menlo, monospace';
+    c.font = '600 15px "JetBrains Mono", ui-monospace, Menlo, monospace';
     c.fillText(s.levelId.toUpperCase(), M, 34);
 
-    c.fillStyle = '#f8fafc';
-    c.font = '600 28px system-ui, sans-serif';
+    c.fillStyle = '#1A2340';
+    c.font = '600 28px "JetBrains Mono", ui-monospace, Menlo, monospace';
     c.fillText(s.levelTitle, M, 76);
 
-    c.fillStyle = '#94a3b8';
-    c.font = '16px system-ui, sans-serif';
+    c.fillStyle = '#7A89A8';
+    c.font = '16px "JetBrains Mono", ui-monospace, Menlo, monospace';
     wrap(c, s.hint, M, 106, W - 2 * M, 22, 2);
 
     // progress
-    c.fillStyle = '#1e293b';
+    c.fillStyle = '#EEF0F8';
     roundRect(c, M, 172, W - 2 * M, 14, 7); c.fill();
     c.fillStyle = accent;
     roundRect(c, M, 172, Math.max((W - 2 * M) * (s.progress || 0), 14), 14, 7); c.fill();
 
-    c.fillStyle = '#cbd5e1';
-    c.font = '600 20px ui-monospace, Menlo, monospace';
+    c.fillStyle = '#1A2340';
+    c.font = '600 20px "JetBrains Mono", ui-monospace, Menlo, monospace';
     c.fillText(`${Math.max(s.timeLeft, 0).toFixed(0)}s`, M, 216);
     if (s.readout) {
-      c.fillStyle = '#94a3b8';
-      c.font = '16px ui-monospace, Menlo, monospace';
+      c.fillStyle = '#7A89A8';
+      c.font = '16px "JetBrains Mono", ui-monospace, Menlo, monospace';
       c.fillText(s.readout, M + 60, 216);
     }
 
     // Why the last episode didn't count, if it didn't. Fixed slot (blank on a
     // clean success) so the metrics rows below don't jump around between draws.
     if (s.reasons && s.reasons.length) {
-      c.fillStyle = s.status === 'success' ? '#fbbf24' : '#f87171';
-      c.font = '600 15px ui-monospace, Menlo, monospace';
+      c.fillStyle = s.status === 'success' ? '#C08A2A' : '#C94F4F';
+      c.font = '600 15px "JetBrains Mono", ui-monospace, Menlo, monospace';
       wrap(c, s.reasons.join('  ·  '), M, 250, W - 2 * M, 18, 2);
     }
 
@@ -116,15 +122,15 @@ export class HUD {
     // of, updated every frame so a rising jerk or overforce total is visible
     // *during* the attempt, not just explained after the fact.
     if (s.metrics) {
-      c.font = '14px ui-monospace, Menlo, monospace';
+      c.font = '14px "JetBrains Mono", ui-monospace, Menlo, monospace';
       s.metrics.forEach((m, i) => {
         const y = 302 + i * 21;
         const val = formatMetricValue(m.key, m.value);
         const over = m.limit !== undefined && m.value > m.limit;
         const near = m.limit !== undefined && !over && m.value > m.limit * 0.8;
-        c.fillStyle = '#64748b';
+        c.fillStyle = '#97A2C2';
         c.fillText(metricLabel(m.key), M, y);
-        c.fillStyle = over ? '#f87171' : near ? '#fbbf24' : m.limit !== undefined ? '#4ade80' : '#94a3b8';
+        c.fillStyle = over ? '#C94F4F' : near ? '#C08A2A' : m.limit !== undefined ? '#2A9D72' : '#7A89A8';
         c.textAlign = 'right';
         const label = m.limit !== undefined
           ? `${val} / ${formatMetricValue(m.key, m.limit)}`
@@ -134,16 +140,16 @@ export class HUD {
       });
     }
 
-    c.fillStyle = '#64748b';
-    c.font = '13px ui-monospace, Menlo, monospace';
+    c.fillStyle = '#97A2C2';
+    c.font = '13px "JetBrains Mono", ui-monospace, Menlo, monospace';
     c.fillText(`gate ${s.gate.passed}/${s.gate.needed} of last ${s.gate.window}`, M, 400);
     c.textAlign = 'right';
     c.fillText(`${s.physHz | 0} Hz phys`, W - M, 400);
     c.textAlign = 'left';
 
     if (s.debug) {
-      c.fillStyle = '#fbbf24';
-      c.font = '11px ui-monospace, Menlo, monospace';
+      c.fillStyle = '#C08A2A';
+      c.font = '11px "JetBrains Mono", ui-monospace, Menlo, monospace';
       const lines = Array.isArray(s.debug) ? s.debug : [s.debug];
       lines.forEach((line, i) => c.fillText(line, M, 418 + i * 12));
     }

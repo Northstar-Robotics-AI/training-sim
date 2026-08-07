@@ -121,8 +121,10 @@ class App {
 
   initRenderer() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0b0d12);
-    this.scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x202028, 1.6));
+    // Light theme, matched to the VRTeleop operator dashboard's palette
+    // (--bg #F5F6FA / --panel-tint #EEF0F8) rather than the old dark scenery.
+    this.scene.background = new THREE.Color(0xf5f6fa);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xeef0f8, 2.0));
     const key = new THREE.DirectionalLight(0xffffff, 1.4);
     key.position.set(1.5, 3, 1.2);
     key.castShadow = true;

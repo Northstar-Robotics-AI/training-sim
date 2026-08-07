@@ -4,18 +4,24 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>YAM XR Gym</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { color-scheme: dark; }
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d12; }
+    /* Palette/type matches the VRTeleop operator dashboard's light theme
+       (webapp/src/style.css) so the two surfaces read as one product. */
+    :root { color-scheme: light; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #F5F6FA; }
     #overlay {
       position: fixed; left: 12px; top: 12px; z-index: 10;
-      font: 13px ui-monospace, Menlo, monospace; color: #94a3b8;
-      background: rgba(12,14,18,.7); padding: 8px 12px; border-radius: 8px;
+      font: 13px "JetBrains Mono", Consolas, ui-monospace, monospace; color: #7A89A8;
+      background: rgba(255,255,255,.85); border: 1px solid #DDE1EE;
+      padding: 8px 12px; border-radius: 8px;
       pointer-events: none;
     }
     #keys {
       position: fixed; left: 12px; bottom: 12px; z-index: 10;
-      font: 12px ui-monospace, Menlo, monospace; color: #475569;
+      font: 12px "JetBrains Mono", Consolas, ui-monospace, monospace; color: #97A2C2;
       pointer-events: none;
     }
   </style>

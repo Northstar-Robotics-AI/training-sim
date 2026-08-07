@@ -77,7 +77,7 @@
   </asset>
 
   <worldbody>
-    <geom name="floor" size="0 0 0.05" type="plane" rgba="0.25 0.26 0.3 1"/>
+    <geom name="floor" size="0 0 0.05" type="plane" rgba="0.867 0.882 0.933 1"/>
     <light pos="0 0 3" dir="0 0 -1" type="directional"/>
     <body name="table" pos="0.4 0 0">
       <geom name="table_top" size="0.35 0.6 0.02" pos="0 0 0.72" type="box" rgba="0.55 0.45 0.35 1"/>

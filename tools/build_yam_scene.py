@@ -290,8 +290,10 @@ def build(args):
     # expects before the XML is written out.
     spec.meshdir = mesh_out
 
+    # Light-mode floor, matched to the VRTeleop operator dashboard's
+    # --border (#DDE1EE) so the scenery reads as one theme with the UI.
     spec.worldbody.add_geom(name="floor", type=mujoco.mjtGeom.mjGEOM_PLANE,
-                            size=[0, 0, 0.05], rgba=[0.25, 0.26, 0.30, 1])
+                            size=[0, 0, 0.05], rgba=[0.867, 0.882, 0.933, 1])
     spec.worldbody.add_light(pos=[0, 0, 3], dir=[0, 0, -1],
                              type=int(mujoco.mjtLightType.mjLIGHT_DIRECTIONAL))
 
