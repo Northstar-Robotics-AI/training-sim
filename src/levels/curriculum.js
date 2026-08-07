@@ -411,11 +411,25 @@ export const CURRICULUM = [
     hint: 'Slide the drawer open with one hand, take the cube with the other, drop it in the bin, '
         + 'then close the drawer.',
     props: () => ({
+      // Carcass is base/top plus a back-stop (thin in x, opposite the joint's
+      // open direction) and two side panels (thin in y, running the full
+      // depth) -- NOT a wall on both x-faces. A wall on the open-x-face used
+      // to sit right on top of the handle's rest position and fully overlap
+      // the drawer's open-travel span, which blocked the gripper's approach
+      // (this geom isn't excluded from gripper contacts the way parent/child
+      // drawer-vs-cabinet contacts are) and would have visually clipped the
+      // slab as it slid past. The whole body is yawed 45deg so the drawer
+      // opens toward the midpoint between straight-ahead and the right arm,
+      // rather than dead-ahead -- quat is yaw=+45deg about Z (see eulerToQuat),
+      // which turns local -x (the joint's open direction) into world
+      // (-0.707,-0.707,0), i.e. toward both -x (the robot) and -y (right, per
+      // R.y<0 above).
       worldbody: `
-    <body name="cabinet" pos="${(L.x + R.x) / 2 + 0.10} 0 ${TABLE_Z}">
+    <body name="cabinet" pos="${(L.x + R.x) / 2 + 0.10} 0 ${TABLE_Z}" quat="0.9238795 0 0 0.3826834">
       <geom type="box" size="0.09 0.10 0.005" pos="0 0 0.005" rgba="0.45 0.35 0.28 1"/>
       <geom type="box" size="0.005 0.10 0.06" pos="0.09 0 0.06" rgba="0.45 0.35 0.28 1"/>
-      <geom type="box" size="0.005 0.10 0.06" pos="-0.09 0 0.06" rgba="0.45 0.35 0.28 1"/>
+      <geom type="box" size="0.09 0.005 0.06" pos="0 0.10 0.06" rgba="0.45 0.35 0.28 1"/>
+      <geom type="box" size="0.09 0.005 0.06" pos="0 -0.10 0.06" rgba="0.45 0.35 0.28 1"/>
       <geom type="box" size="0.09 0.10 0.005" pos="0 0 0.12" rgba="0.45 0.35 0.28 1"/>
       <body name="drawer" pos="0 0 0.04">
         <joint name="drawer_slide" type="slide" axis="-1 0 0" range="0 0.14"
