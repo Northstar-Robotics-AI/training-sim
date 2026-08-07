@@ -30,20 +30,16 @@ function meshUrlsFromXml(xml) {
 // stow pose would pull the arm back toward its own joint stops.
 const HOME_Q = [0, 0.9, 1.2, 0, -0.5, 0];
 
-// Rest posture, per side: arms folded back over their own shoulders with the
-// gripper level and pointing straight down +x, so an episode starts clear of
-// the table with both tools presented the same way.
-//
-// joint1 is the shoulder yaw about world +z, and the two bases toe in by
-// 0.3 rad each (see the base quats in bimanual_yam.xml), so the ±0.3 cancels
-// the toe-in -- with joint1 at 0 the two grippers would splay 34 deg apart.
-// The remaining joints are the fold: joint2/joint3 swing the upper arm back
-// and the forearm forward again over the shoulder, and joint4 levels the
-// wrist. Every one keeps >0.4 rad of clearance from its stop, so the first IK
-// solve of an episode is not starting against a limit.
+// Rest posture, per side: the YAM's true zero position (all joints at 0),
+// so an episode starts from the same calibration pose the real hardware
+// homes to. joint2 and joint3 both range from 0, so this sits right at
+// their lower stop -- that's the hardware's own convention, not a mid-range
+// posture chosen for clearance (see the folded pose this replaced, kept
+// here in history if that clearance turns out to matter for self-collision
+// or controller settling at reset).
 const REST_Q = {
-  left: [0.3, 0.4, 0.55, -0.15, 0, 0],
-  right: [-0.3, 0.4, 0.55, -0.15, 0, 0],
+  left: [0, 0, 0, 0, 0, 0],
+  right: [0, 0, 0, 0, 0, 0],
 };
 
 // Control runs on its own fixed clock. 100 Hz is well above what an operator

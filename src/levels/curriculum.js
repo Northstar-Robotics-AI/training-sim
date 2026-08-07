@@ -17,14 +17,17 @@ const L = { x: 0.30, y: 0.22 };   // nominal left workspace centre
 const R = { x: 0.30, y: -0.22 };
 
 // left_grasp_site's orientation at REST_Q (main.js), i.e. what the gripper
-// is actually pointing when an episode starts -- measured via FK, a clean
-// 90 deg rotation about Y. L1's reset() perturbs yaw/pitch around *this*,
-// not around world identity: identity is ~90 deg away from anything the arm
-// can reach, so targets built as raw eulerToQuat(0, pitch, yaw) from
-// identity landed 90-120+ deg off rest and were routinely unreachable (the
-// ghost gripper made this obvious -- it rendered backwards, since matching
-// it would have required an impossible wrist twist).
-const LEFT_GRASP_REST_QUAT = [0.70710678, 0, 0.70710678, 0];
+// is actually pointing when an episode starts -- measured via FK. Now that
+// REST_Q is the YAM's true zero position, this is a ~91 deg rotation with a
+// slight tilt off pure Y, not the clean 90 deg-about-Y the old folded rest
+// gave. L1's reset() perturbs yaw/pitch around *this*, not around world
+// identity: identity is far from anything the arm can reach, so targets
+// built as raw eulerToQuat(0, pitch, yaw) from identity landed way off rest
+// and were routinely unreachable (the ghost gripper made this obvious -- it
+// rendered backwards, since matching it would have required an impossible
+// wrist twist). Recompute via FK (see tools/ik_smoke.mjs for the loadSim
+// pattern) if REST_Q ever changes again.
+const LEFT_GRASP_REST_QUAT = [0.699168143687048, 0.1056652698645116, 0.6991657381646165, -0.1056694287596678];
 
 const freeBody = (name, geom, pos) => `
     <body name="${name}" pos="${pos.join(' ')}">
